@@ -6,6 +6,7 @@ var logger = require('morgan');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
+var driversRouter = require('./routes/drivers'); // Importar el enrutador de drivers del archivo drivers.js del directorio routes
 
 var app = express();
 
@@ -17,6 +18,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+app.use('/drivers', driversRouter); // Usar el enrutador de drivers para las rutas que comienzan con /drivers
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
