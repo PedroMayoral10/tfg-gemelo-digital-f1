@@ -62,6 +62,25 @@ router.get('/', async function(req, res) {
 });
 
 
+//Solo pueden obtenerse de la API sesiones del 2023 en adelante
+
+router.get('/:date', async function(req, res) {
+
+    try {
+
+      const date = req.params.date;
+      const url = `${OPENF1_BASE}/v1/sessions?date_start=${date}&session_name=Race&session_type=Race`;
+      const data = await fetchWithTimeout(url);
+      res.json(data);
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message || 'Error al consultar OpenF1' });
+    }
+
+
+});
+
 
 
 

@@ -7,6 +7,7 @@ var logger = require('morgan');
 var driversRouter = require('./routes/drivers'); // Importar el enrutador de drivers del archivo drivers.js del directorio routes
 var locationRouter = require('./routes/location'); // importar el enrutador de location del archivo location.js del directorio routes
 var sessionsRouter = require('./routes/sessions'); // importar el enrutador de sessions del archivo sessions.js del directorio routes
+var racesRouter = require('./routes/races'); // importar el enrutador de races del archivo races.js del directorio routes
 
 var app = express();
 
@@ -19,6 +20,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/drivers', driversRouter); // Usar el enrutador de drivers para las rutas que comienzan con /drivers
 app.use('/location', locationRouter); // Usar el enrutador de location para las rutas que comienzan con /location
 app.use('/sessions', sessionsRouter); // Usar el enrutador de sessions para las rutas que comienzan con /sessions
+app.use('/races', racesRouter); // Usar el enrutador de races para las rutas que comienzan con /races
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
