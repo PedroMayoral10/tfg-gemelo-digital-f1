@@ -3,101 +3,106 @@ var router = express.Router();
 
 const OPENF1_BASE = 'https://api.openf1.org';
 
+// --- ESTADO GLOBAL ---
+let ultimaRespuesta = null; // Última posición recibida
+let intervaloId = null;     // ID del intervalo activo
+let circuitoCache = null;   // Para guardar el trazado del circuito
 
-let ultimaRespuesta = null; // Última respuesta (posición) recibida
-let intervaloId = null; // ID del intervalo activo
-
-
-//Parámetros del piloto y sesión del cual vamos a hacer el tracking
-const session_key = 9869;
+// --- CONFIGURACIÓN (SINGAPUR 2023) ---
+// Usamos sesión 9161
+const session_key = 9161;
 const driver_number = 14;
-let tiempoActual = new Date("2025-11-09T17:00:00+00:00"); // Tiempo inicial de la carrera
+// Fecha de inicio de la carrera real (cuando ya están corriendo)
+let tiempoActual = new Date("2023-09-16T13:04:48.492000+00:00"); 
 
 
-// Función para detener el intervalo actual si se hace F5 en esta pagina
-// para que no se cree más de un intervalo para la misma sesión del endpoint
-// ya que eso sobrecargaría el servidor.
-function detenerIntervalo() {
-  if (intervaloId !== null) {
-    clearInterval(intervaloId);
-    intervaloId = null;
-    console.log("🛑 Intervalo de location detenido");
-  }
-}
-
-// Exportar para que otros módulos puedan detenerlo llamando directamente a la funcion PENDIENTE DE REVISAR
-// router.detenerIntervalo = detenerIntervalo;
-
-// Función para realizar la consulta con timeout
+// Función auxiliar: Fetch con Timeout
 async function fetchWithTimeout(url, options = {}, timeout = 10000) {
-
-  //Controlador para parar la petición si se excede el timeout
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
-
-  //Es una propiedad del controlador que se añade a las opciones de fetch
-  //para que fetch pueda abortar la petición en caso de timeout
   options.signal = controller.signal;
 
   try {
-    const res = await fetch(url, options); //Cuando reciba la respuesta pasa a la siguiente línea
+    const res = await fetch(url, options);
     clearTimeout(id);
     if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
-    return await res.json(); // COn el await, esperamos a que todo se transforme a JSON
+    return await res.json();
   } catch (err) {
     clearTimeout(id);
     throw err;
   }
 }
 
-// Función para obtener el frame de ubicación del piloto en ese instante de tiempo
+// Función principal: Obtener un frame de ubicación del coche
 async function getLocationFrame() {
-
-  // formatear fechas en ISO y agregar a los parámetros
+  // Step es una variable que define el intervalo de tiempo entre cada frame, entonces en función a este será más o menos fluido el movimiento
+  // el problema es que hay que saber cuando empiezan a moverse los coches, porque si no va a tardar un buen rato en comenzar a moverse el punto.
+  const step = 270; 
   const date_gt = tiempoActual.toISOString();
-  const date_lt = new Date(tiempoActual.getTime() + 300).toISOString();
+  const date_lt = new Date(tiempoActual.getTime() + step).toISOString();
 
-  // Construir URL con parámetros
+  // Construir la URL para hacer consulta a la API de openF1
   const params = new URLSearchParams();
-  params.append("session_key", session_key);
+  params.append("session_key", session_key); 
   params.append("driver_number", driver_number);
   params.append("date>", date_gt);
   params.append("date<", date_lt);
 
   const url = `${OPENF1_BASE}/v1/location?${params.toString()}`;
 
-  // Realizar la solicitud fetch con timeout
   try {
     const json = await fetchWithTimeout(url);
+    
     if (json.length > 0) {
-      ultimaRespuesta = json[json.length - 1];
-      console.log("📍 Nueva posición:", ultimaRespuesta.x, ultimaRespuesta.y);
+      ultimaRespuesta = json[json.length - 1]; 
+      console.log(`✅ [${driver_number}] Moviendo a: ${ultimaRespuesta.x}, ${ultimaRespuesta.y}`);
+    } else {
+      console.log(`⚠️ Sin datos para: ${date_gt}`);
     }
   } catch (err) {
-    console.error("❌ Error obteniendo frame:", err.message);
+    console.error("❌ Error API:", err.message);
   }
 
-  // El nuevo tiempo actual será el tiempo actual + 300 ms
-  tiempoActual = new Date(tiempoActual.getTime() + 300);
+  // Avanzamos el reloj pase lo que pase
+  tiempoActual = new Date(tiempoActual.getTime() + step);
 }
 
-// Endpoint para iniciar el tracking de la ubicación del piloto
-router.get("/", (req, res) => {
+
+// --- RUTAS ---
+
+// Ruta para obtener la forma del circuito
+router.get('/track-data', async (req, res) => {
+
+    if (circuitoCache) return res.json(circuitoCache);
+    
+    try {
+        // Pedimos 2 minutos de datos para tener la forma del circuito
+        const start = "2023-09-16T13:00:00+00:00";
+        const end = "2023-09-16T13:33:00+00:00";
+        const url = `${OPENF1_BASE}/v1/location?session_key=${session_key}&driver_number=${driver_number}&date>=${start}&date<${end}`;
+        
+        const data = await fetchWithTimeout(url);
+        circuitoCache = data;
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Ruta para obtener la posición actual del piloto
+router.get("/current", (req, res) => {
   
-  // Detener cualquier intervalo activo antes de iniciar uno nuevo para no sobrecargar el servidor
-  detenerIntervalo();
-
-  // Iniciar nuevo intervalo
-  intervaloId = setInterval(getLocationFrame, 300);
-  console.log("Recibiendo ubicación del piloto ", driver_number);
-
-  if (!ultimaRespuesta) {
-    return res.json({ msg: "Aún no hay datos..." });
+  // Solo iniciamos el intervalo si NO está corriendo ya.
+  if (!intervaloId) {
+      console.log("🟢 Iniciando simulación...");
+      intervaloId = setInterval(getLocationFrame, 270); // Actualizamos cada 270ms
   }
 
-  res.json(ultimaRespuesta); // Mostramos la última respuesta almacenada
+  if (!ultimaRespuesta) {
+    return res.json({}); // Devolvemos vacío si aún no ha cargado
+  }
 
+  res.json(ultimaRespuesta);
 });
 
 module.exports = router;
-

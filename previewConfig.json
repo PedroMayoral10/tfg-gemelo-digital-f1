@@ -1,0 +1,9 @@
+{
+  "App": [
+    {
+      "propName": "App",
+      "propType": "string",
+      "defaultValue": "0"
+    }
+  ]
+}
