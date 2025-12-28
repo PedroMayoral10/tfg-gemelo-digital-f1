@@ -41,7 +41,9 @@ export default function CircuitMap() {
             });
             // Pintamos los puntos del trazado (insertamos los datos en el array de puntos definido en el estado de manera vacía al inicio)
             setTrackPoints(data);
-            toast.success("Circuito cargado correctamente 🏁");
+            toast.success("Circuito cargado correctamente 🏁", {
+                toastId: 'existoCircuito'
+            });
         }
         setLoading(false); // Terminamos de cargar porque ya tenemos el trazado y si no hay datos, no tiene sentido seguir esperando
       })
@@ -96,11 +98,22 @@ export default function CircuitMap() {
   const carCoords = getCarCoords();
 
   return (
-
-    //Div contenedor del circuito con estilos
-    <div className="d-flex justify-content-center align-items-center bg-dark rounded p-3 border border-secondary">
-      <svg width="100%" height="100%" viewBox={`0 0 ${svgSize} ${svgSize}`} style={{maxWidth: '600px'}}>
-        {/* Trazado Base (Gris oscuro) */}
+    // Quitamos los estilos de borde aquí porque ya los tiene el padre en App.jsx
+    // Simplemente ocupamos el 100% del hueco que nos den.
+    <div className="d-flex justify-content-center align-items-center" 
+         style={{ width: '100%', height: '100%' }}>
+      
+      <svg 
+        width="100%" 
+        height="100%" 
+        viewBox={`0 0 ${svgSize} ${svgSize}`} 
+        preserveAspectRatio="xMidYMid meet" 
+        /* preserveAspectRatio="xMidYMid meet" es la CLAVE.
+           Significa: "Centra el dibujo (Mid) y redúcelo hasta que quepa entero (meet)"
+        */
+      >
+        
+        {/* Trazado Base */}
         <polyline 
             points={polylinePoints} 
             fill="none" 
@@ -109,23 +122,11 @@ export default function CircuitMap() {
             strokeLinecap="round" 
             strokeLinejoin="round"
         />
-        
-        {/* Trazado Neón (Cian) */}
-        {/* <polyline 
-            points={polylinePoints} 
-            fill="none" 
-            stroke="#00f3ff" 
-            strokeWidth="4" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-            style={{ filter: 'drop-shadow(0 0 5px #00f3ff)' }}
-        /> */}
 
         {/* Coche */}
         {carPosition && (
             <g transform={`translate(${carCoords.x}, ${carCoords.y})`}>
                 <circle r="6" fill="#0f582186" stroke="#012414ff" strokeWidth="2" />
-                {/* Efecto de 'radar' o brillo pulsante */}
                 <circle r="10" fill="none" stroke="#ffffffff" strokeWidth="1" opacity="0.5">
                     <animate attributeName="r" from="6" to="20" dur="1s" repeatCount="indefinite"/>
                     <animate attributeName="opacity" from="0.8" to="0" dur="1s" repeatCount="indefinite"/>

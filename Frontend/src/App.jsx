@@ -1,40 +1,66 @@
-import { useState } from 'react';
-import { Container, Row, Col, Card, Tab, Tabs } from 'react-bootstrap';
+import { Routes, Route } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
+import Navbar from './components/Navbar';
 import CircuitMap from './components/Circuito';
-import './App.css'; // Tu CSS oscuro personalizado
+/* import Pilotos from './components/Pilotos';       // (Asegúrate de que existan)
+import Telemetria from './components/Telemetria'; // (Asegúrate de que existan) */
+import './App.css'; 
 
 function App() {
-
   return (
-    <div className="app-container" style={{ minHeight: '100vh', backgroundColor: '#121212', color: 'white' }}>
-      {/* Contenedor de Notificaciones */}
+    // 1. Contenedor Principal (Fondo oscuro, pantalla completa)
+    <div className="d-flex flex-column vh-100" style={{ backgroundColor: '#121212', overflow: 'hidden' }}>
+      
       <ToastContainer position="top-right" theme="dark" />
 
-      <Container fluid className="p-4">
-        <Row className="mb-4">
-          <Col>
-            <h1 className="text-uppercase fw-bold" style={{ borderLeft: '5px solid #e10600', paddingLeft: '15px' }}>
-              F1 Digital Twin <span style={{ fontSize: '0.5em', color: '#641717ff' }}>BETA</span>
-            </h1>
-          </Col>
-        </Row>
+      {/* 2. BARRA DE NAVEGACIÓN (Se queda FIJA siempre) */}
+      <Navbar /> 
 
-        <Row>
-          <Col md={12}>
-            <Card className="bg-secondary text-white shadow-lg" style={{ backgroundColor: '#1e1e1e', border: 'none' }}>
-              {/* Aquí va nuestro Mapa */}
-              <div className="p-3">
-                <Row>
-                  <Col>
-                    <CircuitMap />
-                  </Col>
-                </Row>
+      {/* 3. ZONA DE CONTENIDO CAMBIANTE */}
+      {/* Aquí usamos flex-grow para que ocupe todo el espacio sobrante debajo del menú */}
+      <div className="flex-grow-1 w-100 d-flex flex-column">  
+        <Routes>
+            
+            {/* --- RUTA 1: CIRCUITO INTERACTIVO --- */}
+            <Route path="/circuito-interactivo" element={
+              <>
+                {/* Tarjeta del Mapa */}
+                <div className="flex-grow-1 p-4 d-flex justify-content-center align-items-center">
+                  <div 
+                    className="rounded shadow-lg border border-secondary bg-dark position-relative"
+                    style={{ 
+                      width: '100%', 
+                      maxWidth: '900px', 
+                      height: '65vh',     
+                      padding: '20px'
+                    }}
+                  >
+                      <div style={{ width: '100%', height: '100%' }}>
+                         <CircuitMap />
+                      </div>
+                  </div>
+                </div>
+              </>
+            } />
+
+
+            {/* --- RUTA 2: PILOTOS --- */}
+            <Route path="/pilotos" element={
+              <div className="p-5 text-center text-white">
+                 Piloto
               </div>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
+            } />
+
+
+            {/* --- RUTA 3: TELEMETRÍA --- */}
+            <Route path="/telemetria" element={
+              <div className="p-5 text-center text-white">
+                 Telemetria
+              </div>
+            } />
+
+        </Routes>
+      </div>
     </div>
   );
 }
