@@ -58,7 +58,7 @@ router.get('/openf1/:year', async function(req, res) {
         });
     }
 
-    const url = `${OPENF1_BASE}/v1/sessions?session_type=Race&year=${year}`;
+    const url = `${OPENF1_BASE}/v1/sessions?session_type=Race&year=${year}&session_name=Race`;
     console.log(`🌐 Pidiendo datos a: ${url}`);
 
     try {

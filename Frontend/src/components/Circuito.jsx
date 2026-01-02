@@ -1,89 +1,88 @@
 import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'react-toastify';
+import SessionSelector from './SeleccionSesion'; 
+import { URL_API_BACKEND } from "../config";
 
 // Función para escalar coordenadas
 const mapCoordinates = (val, min, max, size) => {
   return ((val - min) / (max - min)) * size;
 };
 
-
-// Componente Principal que contiene el mapa del circuito y la posición del coche
-
 export default function CircuitMap() {
 
-  // Definimos los estados iniciales del componente
-  const [trackPoints, setTrackPoints] = useState([]); // Puntos del trazado del circuito
-  const [carPosition, setCarPosition] = useState(null); // Posición actual del coche
-  const [bounds, setBounds] = useState({ minX: 0, maxX: 0, minY: 0, maxY: 0 }); // Límites del circuito
-  const [loading, setLoading] = useState(true); // Estado de carga
+  // --- ESTADOS ---
+  // AÑADIDO: Semáforo para saber si hemos dado al botón START
+  const [simulationActive, setSimulationActive] = useState(false);
 
-  // Hook de efecto para cargar el trazado (circuito)
+  const [trackPoints, setTrackPoints] = useState([]); 
+  const [carPosition, setCarPosition] = useState(null); 
+  const [bounds, setBounds] = useState({ minX: 0, maxX: 0, minY: 0, maxY: 0 }); 
+  const [loadingMap, setLoadingMap] = useState(false); // Renombrado a loadingMap para ser más específico
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // Estado para forzar re-renderizado si es necesario
+
+  // --- EFECTO 1: CARGAR TRAZADO ---
+  // MODIFICADO: Ahora depende de [simulationActive]
   useEffect(() => {
-    fetch('/location/track-data')
-      // Promesa para manejar la respuesta
+    // Si la simulación NO está activa, no hacemos nada (protección)
+    if (!simulationActive) return;
+
+    setLoadingMap(true);
+    fetch(`${URL_API_BACKEND}/location/track-data`)
       .then(res => {
-        if (!res.ok) throw new Error("Error al cargar el circuito");
+        if (!res.ok) throw new Error("Esperando datos del circuito...");
         return res.json();
       })
-      //Si la respuesta es correcta, procesamos los datos
       .then(data => {
-        //Comprobamos que hay datos
         if (data.length > 0) {
-            // Extraemos los valores x e y para calcular los límites
             const xValues = data.map(p => p.x);
             const yValues = data.map(p => p.y);
-            // Asignamos los límites y los puntos del trazado
             setBounds({
                 minX: Math.min(...xValues),
                 maxX: Math.max(...xValues),
                 minY: Math.min(...yValues),
                 maxY: Math.max(...yValues)
             });
-            // Pintamos los puntos del trazado (insertamos los datos en el array de puntos definido en el estado de manera vacía al inicio)
             setTrackPoints(data);
-            toast.success("Circuito cargado correctamente 🏁", {
-                toastId: 'existoCircuito'
-            });
+            // Quitamos el toast de éxito aquí para no saturar, el usuario ya ve el mapa
         }
-        setLoading(false); // Terminamos de cargar porque ya tenemos el trazado y si no hay datos, no tiene sentido seguir esperando
+        setLoadingMap(false);
       })
       .catch(err => {
         console.error(err);
-        toast.error("Fallo al cargar datos del circuito");
-        setLoading(false);
+        setLoadingMap(false);
       });
-  }, []);
+  }, [simulationActive, refreshTrigger]); // <--- Se ejecuta cuando cambia simulationActive
 
-  // Hook de efecto para actualizar la posición del coche cada 270ms (recomendado por la API)
+  // --- EFECTO 2: POLLING (MOVER COCHE) ---
+  // MODIFICADO: Ahora depende de [simulationActive]
   useEffect(() => {
-    const interval = setInterval(() => { //setInterval es una funcion de JS predefinida que ejecuta una funcion cada X ms
-        fetch('/location/current')
-            .then(res => res.json()) // Si se resuelve la promesa, parseamos a JSON
-            .then(data => { // Accedemos a los datos y actualizamos la posición del coche
+    if (!simulationActive) return;
+
+    const interval = setInterval(() => {
+        fetch(`${URL_API_BACKEND}/location/current`)
+            .then(res => res.json())
+            .then(data => {
                 if(data && data.x) setCarPosition(data);
             })
-            .catch(err => console.error(err)); // Silenciamos errores de polling para no saturar
+            .catch(err => console.error(err));
     }, 270); 
-    return () => clearInterval(interval); // Limpiamos el intervalo al desmontar el componente, porque si no se ejecuta indefinidamente
-  }, []);
+    
+    return () => clearInterval(interval);
+  }, [simulationActive]);
 
 
-  // Preparar SVG para pintar el circuito y la posición del coche
+  // --- DIBUJO SVG ---
   const svgSize = 800; 
   const padding = 50;
 
-  // UseMemo es solo para pintar el circuito una vez si sus valores no se modifican, porque si no se consume mucho rendimiento
   const polylinePoints = useMemo(() => {
       return trackPoints.map(p => {
-        // Escalamos las coordenadas al tamaño del SVG con padding
         const x = mapCoordinates(p.x, bounds.minX, bounds.maxX, svgSize - padding * 2) + padding;
-        // Invertimos Y (svgSize - y) porque en pantallas la Y crece hacia abajo
         const y = svgSize - (mapCoordinates(p.y, bounds.minY, bounds.maxY, svgSize - padding * 2) + padding);
         return `${x},${y}`;
       }).join(" ");
   }, [trackPoints, bounds]);
 
-  // Coordenadas actuales del coche, aqui no se usa useMemo porque se actualiza constantemente la posición del coche
   const getCarCoords = () => {
       if (!carPosition) return { x: 0, y: 0 };
       const x = mapCoordinates(carPosition.x, bounds.minX, bounds.maxX, svgSize - padding * 2) + padding;
@@ -91,49 +90,78 @@ export default function CircuitMap() {
       return { x, y };
   };
 
-  // Si estamos cargando, mostramos un mensaje de carga
-  if (loading) return <div className="text-white">Cargando circuito...</div>;
-
-  // Obtenemos las coordenadas del coche
   const carCoords = getCarCoords();
 
   return (
-    // Quitamos los estilos de borde aquí porque ya los tiene el padre en App.jsx
-    // Simplemente ocupamos el 100% del hueco que nos den.
-    <div className="d-flex justify-content-center align-items-center" 
-         style={{ width: '100%', height: '100%' }}>
+    // AÑADIDO: Contenedor Flex vertical para poner el panel arriba y el mapa abajo
+    <div className="d-flex flex-column h-100 w-100">
       
-      <svg 
-        width="100%" 
-        height="100%" 
-        viewBox={`0 0 ${svgSize} ${svgSize}`} 
-        preserveAspectRatio="xMidYMid meet" 
-        /* preserveAspectRatio="xMidYMid meet" es la CLAVE.
-           Significa: "Centra el dibujo (Mid) y redúcelo hasta que quepa entero (meet)"
-        */
-      >
-        
-        {/* Trazado Base */}
-        <polyline 
-            points={polylinePoints} 
-            fill="none" 
-            stroke="#333" 
-            strokeWidth="12" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
+      {/* 1. SECCIÓN SUPERIOR: SELECTOR DE SESIÓN */}
+      <div className="container-fluid pt-3 px-4">
+        <SessionSelector
+          onStartSimulation={() => {
+            setTrackPoints([]); // <--- 1. Limpiamos el mapa viejo visualmente
+            setSimulationActive(true);
+            setRefreshTrigger(prev => prev + 1); // <--- 2. FORZAMOS que el useEffect se dispare
+          }}
         />
+      </div>
 
-        {/* Coche */}
-        {carPosition && (
-            <g transform={`translate(${carCoords.x}, ${carCoords.y})`}>
-                <circle r="6" fill="#0f582186" stroke="#012414ff" strokeWidth="2" />
-                <circle r="10" fill="none" stroke="#ffffffff" strokeWidth="1" opacity="0.5">
-                    <animate attributeName="r" from="6" to="20" dur="1s" repeatCount="indefinite"/>
-                    <animate attributeName="opacity" from="0.8" to="0" dur="1s" repeatCount="indefinite"/>
-                </circle>
-            </g>
+      {/* 2. SECCIÓN INFERIOR: MAPA */}
+      <div className="flex-grow-1 position-relative d-flex justify-content-center align-items-center bg-black m-4 rounded border border-secondary overflow-hidden">
+        
+        {/* Caso A: No ha empezado */}
+        {!simulationActive && (
+             <div className="text-zinc-500">Selecciona una sesión arriba para comenzar</div>
         )}
-      </svg>
+
+        {/* Caso B: Cargando mapa */}
+        {simulationActive && loadingMap && (
+             <div className="text-white spinner-border" role="status"></div>
+        )}
+
+        {/* Caso C: Mapa listo */}
+        {simulationActive && !loadingMap && trackPoints.length > 0 && (
+          <svg 
+            width="100%" 
+            height="100%" 
+            viewBox={`0 0 ${svgSize} ${svgSize}`} 
+            preserveAspectRatio="xMidYMid meet"
+          >
+            {/* Trazado Base */}
+            <polyline 
+                points={polylinePoints} 
+                fill="none" 
+                stroke="#333" 
+                strokeWidth="14" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+            />
+            {/* Línea interior para efecto asfalto */}
+            <polyline 
+                points={polylinePoints} 
+                fill="none" 
+                stroke="#222" 
+                strokeWidth="8" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+            />
+
+            {/* Coche */}
+            {carPosition && (
+                <g transform={`translate(${carCoords.x}, ${carCoords.y})`}>
+                    {/* Efecto Radar (Onda expansiva) */}
+                    <circle r="20" fill="none" stroke="#e10600" strokeWidth="1" opacity="0.6">
+                        <animate attributeName="r" from="5" to="30" dur="1.5s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" from="0.8" to="0" dur="1.5s" repeatCount="indefinite"/>
+                    </circle>
+                    {/* Punto del coche (Rojo F1) */}
+                    <circle r="6" fill="#e10600" stroke="white" strokeWidth="2" />
+                </g>
+            )}
+          </svg>
+        )}
+      </div>
     </div>
   );
 }

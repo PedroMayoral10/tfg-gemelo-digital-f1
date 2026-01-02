@@ -3,6 +3,7 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+var cors = require('cors');
 
 var driversRouter = require('./routes/drivers'); // Importar el enrutador de drivers del archivo drivers.js del directorio routes
 var locationRouter = require('./routes/location'); // importar el enrutador de location del archivo location.js del directorio routes
@@ -11,6 +12,7 @@ var racesRouter = require('./routes/races'); // importar el enrutador de races d
 
 var app = express();
 
+app.use(cors());
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
