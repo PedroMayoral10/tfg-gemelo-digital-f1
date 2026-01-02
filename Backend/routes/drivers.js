@@ -37,9 +37,9 @@ router.get('/', async function(req, res, next) {
 });
 
 
-/* Get drivers from a specific race */ //Obtener los de la carrera mediante OpenF1 API
+//Obtener los pilotos de una carrera mediante OpenF1 API
 
-router.get('/:session_key', async function(req, res, next) {
+router.get('/openf1/:session_key', async function(req, res, next) {
     try {
 
         const session_key = req.params.session_key;

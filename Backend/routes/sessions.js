@@ -2,83 +2,49 @@ var express = require('express');
 var router = express.Router();
 
 
-const locationRouter = require('./location'); // Importar el enrutador de location para poder detener su intervalo
-                                              // al cambiar de endpoint
-
-
-
 //Aqui accedemos a la API de OpenF1, no a MongoDB
 const OPENF1_BASE = 'https://api.openf1.org';
 
-//Función para hacer fetch con timeout porque la api dice que las sentencias estan limitadas a 10 segundos
-//y que si tarda mas de ese tiempo que hagamos la consulta en varias mas pequeñas.
-
+// --- NUEVO: Función auxiliar Fetch (Necesaria aquí también) ---
 async function fetchWithTimeout(url, options = {}, timeout = 10000) {
-  const controller = new AbortController();          // Creamos un controlador para poder abortar la petición
-  const id = setTimeout(() => controller.abort(), timeout);  // Programamos un "timeout" que aborta la petición
-
-  options.signal = controller.signal;                // Pasamos la señal al fetch
-
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  options.signal = controller.signal;
   try {
-    const res = await fetch(url, options);          // Hacemos la petición
-    clearTimeout(id);                               // Si respondió a tiempo, limpiamos el timeout
-    if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);  // Error si la respuesta HTTP no es 200-299
-    return await res.json();                        // Devolvemos los datos JSON
+    const res = await fetch(url, options);
+    clearTimeout(id);
+    if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
+    return await res.json();
   } catch (err) {
-    clearTimeout(id);                               // Limpiamos timeout si hubo error
-    throw err;                                      // Lanzamos el error para que lo maneje quien llama a la función
+    clearTimeout(id);
+    throw err;
   }
 }
 
-router.get('/', async function(req, res) {
-    
+// --- NUEVO: RUTA PARA OBTENER INFO DE UNA SESIÓN ESPECÍFICA ---
+// Esta ruta es vital para saber el "date_start"
+// Uso: GET /sessions/9161
+router.get('/openf1/:session_key', async function(req, res) {
+    const session_key = req.params.session_key;
+
+    if (!session_key) {
+        return res.status(400).json({ error: "Falta el session_key" });
+    }
+
     try {
-
-        locationRouter.detenerIntervalo(); // Detenemos el intervalo de location al cambiar de endpoint
-        const { country_name, session_name, year } = req.query;
-
-        // Validamos que todos los parámetros obligatorios estén presentes
-        if (!country_name || !session_name || !year) {
-        return res.status(400).json({ error: 'Faltan parámetros obligatorios: country_name, session_name, year' });
-        }
-        
-        // Usa URLSearchParams para construir correctamente la query string
-        const params = new URLSearchParams();
-        params.append('country_name', country_name);
-        params.append('session_name', session_name);
-        params.append('year', year);
-
-        const url = `${OPENF1_BASE}/v1/sessions?${params.toString()}`;
-
+        const url = `${OPENF1_BASE}/v1/sessions?session_key=${session_key}`;
         const data = await fetchWithTimeout(url);
         
-        res.json(data);
-
+        // OpenF1 devuelve un array, aunque sea un solo resultado
+        if (data.length > 0) {
+            res.json(data[0]); // Devolvemos el objeto limpio
+        } else {
+            res.status(404).json({ error: "Sesión no encontrada" });
+        }
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: error.message || 'Error al consultar OpenF1' });
+        res.status(500).json({ error: "Error al conectar con OpenF1" });
     }
-
-});
-
-
-//Solo pueden obtenerse de la API sesiones del 2023 en adelante
-
-router.get('/:date', async function(req, res) {
-
-    try {
-
-      const date = req.params.date;
-      const url = `${OPENF1_BASE}/v1/sessions?date_start=${date}&session_name=Race&session_type=Race`;
-      const data = await fetchWithTimeout(url);
-      res.json(data);
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message || 'Error al consultar OpenF1' });
-    }
-
-
 });
 
 
