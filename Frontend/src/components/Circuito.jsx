@@ -93,75 +93,91 @@ export default function CircuitMap() {
   const carCoords = getCarCoords();
 
   return (
-    // AÑADIDO: Contenedor Flex vertical para poner el panel arriba y el mapa abajo
-    <div className="d-flex flex-column h-100 w-100">
-      
-      {/* 1. SECCIÓN SUPERIOR: SELECTOR DE SESIÓN */}
-      <div className="container-fluid pt-3 px-4">
-        <SessionSelector
-          onStartSimulation={() => {
-            setTrackPoints([]); // <--- 1. Limpiamos el mapa viejo visualmente
-            setSimulationActive(true);
-            setRefreshTrigger(prev => prev + 1); // <--- 2. FORZAMOS que el useEffect se dispare
-          }}
-        />
+      // Usamos h-100 para que ocupe toda la altura que le da App.js
+      <div className="container-fluid h-100 py-3">
+        <div className="row h-100">
+
+          {/* --- COLUMNA IZQUIERDA: EL MAPA --- */}
+          <div className="col-lg-9 h-100 mb-3 mb-lg-0">
+            <div
+              className="card h-100 w-100 position-relative d-flex justify-content-center align-items-center bg-black border-danger shadow overflow-hidden"
+              style={{ borderWidth: '2px', borderRadius: '15px' }} // <-- Estilos añadidos para igualar al derecho
+            >
+
+              {!simulationActive && (
+                <div className="text-secondary">Selecciona una sesión para comenzar</div>
+              )}
+
+              {simulationActive && loadingMap && (
+                <div className="spinner-border text-danger" role="status"></div>
+              )}
+
+              {simulationActive && !loadingMap && trackPoints.length > 0 && (
+                // El SVG se adapta al contenedor
+                <svg
+                  width="95%"
+                  height="95%"
+                  viewBox={`0 0 ${svgSize} ${svgSize}`}
+                  preserveAspectRatio="xMidYMid meet"
+                  style={{ maxHeight: '80vh' }} // Límite de seguridad
+                >
+                  <polyline points={polylinePoints} fill="none" stroke="#333" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
+                  <polyline points={polylinePoints} fill="none" stroke="#222" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+                  {carPosition && (
+                    <g transform={`translate(${carCoords.x}, ${carCoords.y})`}>
+                      <circle r="20" fill="none" stroke="#e10600" strokeWidth="1" opacity="0.6">
+                        <animate attributeName="r" from="5" to="30" dur="1.5s" repeatCount="indefinite" />
+                        <animate attributeName="opacity" from="0.8" to="0" dur="1.5s" repeatCount="indefinite" />
+                      </circle>
+                      <circle r="6" fill="#e10600" stroke="white" strokeWidth="2" />
+                    </g>
+                  )}
+                </svg>
+              )}
+
+              <div className="position-absolute bottom-0 w-100 text-center pb-3 text-white-50 small">
+                {/* Aquí puedes poner variables si las tienes disponibles */}
+                CIRCUITO DE cambiar nombre
+              </div>
+            </div>
+          </div>
+
+
+          {/* --- COLUMNA DERECHA: CONFIGURACIÓN --- */}
+          <div className="col-lg-3 h-100">
+            <div className="card h-100 bg-black border-danger shadow" style={{ borderWidth: '2px', borderRadius: '15px' }}>
+              <div className="card-body p-4 d-flex flex-column">
+
+                {/* Título */}
+                <h5 className="text-white mb-4 fw-bold text-uppercase border-bottom border-secondary pb-2">
+                  Configuración
+                </h5>
+
+                {/* Aquí va tu SessionSelector (que ahora es vertical gracias al Paso 1) */}
+                <div className="mb-4">
+                  <SessionSelector
+                    onStartSimulation={() => {
+                      setTrackPoints([]);
+                      setSimulationActive(true);
+                      setRefreshTrigger(prev => prev + 1);
+                    }}
+                  />
+                </div>
+
+                {/* Datos Extra (Relleno para que no quede vacío abajo) */}
+                <div className="mt-auto text-white-50">
+                  <small>Estado del sistema</small>
+                  <div className="d-flex align-items-center gap-2 mt-1 text-success">
+                    <div className="spinner-grow spinner-grow-sm" role="status"></div>
+                    <span>Sistema Online</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
-
-      {/* 2. SECCIÓN INFERIOR: MAPA */}
-      <div className="flex-grow-1 position-relative d-flex justify-content-center align-items-center bg-black m-4 rounded border border-secondary overflow-hidden">
-        
-        {/* Caso A: No ha empezado */}
-        {!simulationActive && (
-             <div className="text-zinc-500">Selecciona una sesión arriba para comenzar</div>
-        )}
-
-        {/* Caso B: Cargando mapa */}
-        {simulationActive && loadingMap && (
-             <div className="text-white spinner-border" role="status"></div>
-        )}
-
-        {/* Caso C: Mapa listo */}
-        {simulationActive && !loadingMap && trackPoints.length > 0 && (
-          <svg 
-            width="100%" 
-            height="100%" 
-            viewBox={`0 0 ${svgSize} ${svgSize}`} 
-            preserveAspectRatio="xMidYMid meet"
-          >
-            {/* Trazado Base */}
-            <polyline 
-                points={polylinePoints} 
-                fill="none" 
-                stroke="#333" 
-                strokeWidth="14" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-            />
-            {/* Línea interior para efecto asfalto */}
-            <polyline 
-                points={polylinePoints} 
-                fill="none" 
-                stroke="#222" 
-                strokeWidth="8" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-            />
-
-            {/* Coche */}
-            {carPosition && (
-                <g transform={`translate(${carCoords.x}, ${carCoords.y})`}>
-                    {/* Efecto Radar (Onda expansiva) */}
-                    <circle r="20" fill="none" stroke="#e10600" strokeWidth="1" opacity="0.6">
-                        <animate attributeName="r" from="5" to="30" dur="1.5s" repeatCount="indefinite"/>
-                        <animate attributeName="opacity" from="0.8" to="0" dur="1.5s" repeatCount="indefinite"/>
-                    </circle>
-                    {/* Punto del coche (Rojo F1) */}
-                    <circle r="6" fill="#e10600" stroke="white" strokeWidth="2" />
-                </g>
-            )}
-          </svg>
-        )}
-      </div>
-    </div>
   );
 }

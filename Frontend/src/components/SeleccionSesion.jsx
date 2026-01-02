@@ -1,221 +1,163 @@
-import { useState, useEffect } from "react";
-import { toast } from "react-toastify";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { URL_API_BACKEND } from "../config";
-
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-
-// Años disponibles en OpenF1 
-const AVAILABLE_YEARS = ["2023", "2024","2025"];
+import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import { URL_API_BACKEND } from "../config"; // Asegúrate de que esta ruta es correcta
 
 export default function SessionSelector({ onStartSimulation }) {
+  
   // --- ESTADOS ---
-  const [selectedYear, setSelectedYear] = useState("2023"); // Por defecto 2023
-  const [races, setRaces] = useState([]);
+  const [years] = useState([2023, 2024, 2025]);
+  const [selectedYear, setSelectedYear] = useState(2023); // Año por defecto
+  
+  const [sessions, setSessions] = useState([]);
+  const [selectedSession, setSelectedSession] = useState(""); // <--- Esta era la que fallaba
+  
   const [drivers, setDrivers] = useState([]);
-  
-  const [selectedRace, setSelectedRace] = useState(null);
-  const [selectedDriver, setSelectedDriver] = useState(null);
-  
-  // Estados de apertura de los menús
-  const [openYear, setOpenYear] = useState(false);
-  const [openRace, setOpenRace] = useState(false);
-  const [openDriver, setOpenDriver] = useState(false);
-  
-  const [loadingDrivers, setLoadingDrivers] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState("");
 
-  // 1. CARGAR CARRERAS (Cada vez que cambia el año)
+  const [loading, setLoading] = useState(false);
+
+  // --- 1. CARGAR SESIONES AL CAMBIAR DE AÑO ---
   useEffect(() => {
-    // Reseteamos selecciones al cambiar de año
-    setRaces([]);
-    setSelectedRace(null);
-    setSelectedDriver(null);
-    setDrivers([]);
-
-    fetch(`${URL_API_BACKEND}/races/openf1/${selectedYear}`)
+    setLoading(true);
+    // Filtramos directamente en la URL por "Race" para evitar duplicados
+    fetch(`https://api.openf1.org/v1/sessions?year=${selectedYear}&session_name=Race`)
       .then(res => res.json())
       .then(data => {
-        if(Array.isArray(data)) {
-            // Ordenamos las carreras por fecha (de más antigua a más nueva)
-            const sorted = data.sort((a, b) => new Date(a.date_start) - new Date(b.date_start));
-            setRaces(sorted);
-        }
+        setSessions(data);
+        // Reseteamos selecciones al cambiar de año
+        setSelectedSession("");
+        setDrivers([]);
+        setSelectedDriver("");
+        setLoading(false);
       })
-      .catch(() => toast.error(`Error al cargar carreras de ${selectedYear}`));
+      .catch(err => {
+        console.error(err);
+        toast.error("Error cargando sesiones");
+        setLoading(false);
+      });
   }, [selectedYear]);
 
-  // 2. CARGAR PILOTOS (Al elegir carrera)
-  const handleSelectRace = (sessionKey) => {
-    setSelectedRace(sessionKey);
-    setSelectedDriver(null); 
-    setDrivers([]); 
-    setOpenRace(false); 
-    
+  // --- 2. CARGAR PILOTOS AL ELEGIR CIRCUITO ---
+  const handleSessionChange = (e) => {
+    const sessionKey = e.target.value;
+    setSelectedSession(sessionKey);
+    setSelectedDriver(""); // Resetear piloto
+
     if (!sessionKey) return;
 
-    setLoadingDrivers(true);
-    fetch(`${URL_API_BACKEND}/drivers/openf1/${sessionKey}`)
+    setLoading(true);
+    fetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`)
       .then(res => res.json())
       .then(data => {
-        const uniqueDrivers = Array.from(
-            new Map(data.map(item => [item.driver_number, item])).values()
-        );
+        // A veces la API devuelve duplicados de pilotos, usamos un Map para filtrar por número
+        const uniqueDrivers = [...new Map(data.map(item => [item.driver_number, item])).values()];
+        // Ordenamos por número
+        uniqueDrivers.sort((a, b) => a.driver_number - b.driver_number);
+        
         setDrivers(uniqueDrivers);
-        setLoadingDrivers(false);
+        setLoading(false);
       })
-      .catch(() => {
-        toast.error("Error al cargar pilotos");
-        setLoadingDrivers(false);
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
       });
   };
 
-  // 3. START
-  const handleStart = async () => {
-    if (!selectedRace || !selectedDriver) return;
+  // --- 3. BOTÓN START ---
+  const handleStart = () => {
+    if (!selectedSession || !selectedDriver) {
+      toast.warning("Selecciona circuito y piloto");
+      return;
+    }
 
-    try {
-      const response = await fetch(`${URL_API_BACKEND}/location/start`, {
+    const payload = {
+        session_key: selectedSession,
+        driver_number: selectedDriver
+    };
+
+    // Llamada a TU backend para iniciar la simulación
+    fetch(`${URL_API_BACKEND}/location/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            session_key: selectedRace, 
-            driver_number: selectedDriver 
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok) {
-        toast.success(`🏁 Simulación iniciada: ${result.startTime}`);
-        onStartSimulation(); 
-      } else {
-        toast.error(`Error: ${result.error}`);
-      }
-    } catch (error) {
-      toast.error("Error de conexión");
-    }
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            toast.error(data.error);
+        } else {
+            toast.success(`Simulación Iniciada: ${data.startTime}`);
+            // Avisamos al padre (CircuitMap) que empiece a pintar
+            if (onStartSimulation) onStartSimulation();
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        toast.error("Error conectando con el servidor");
+    });
   };
 
+  // --- RENDERIZADO (DISEÑO VERTICAL) ---
   return (
-    <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 shadow-xl mb-4">
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+    <div className="d-flex flex-column gap-3 w-100">
         
-        {/* === COLUMNA 1: AÑO (2 espacios) === */}
-        <div className="md:col-span-2 flex flex-col gap-2">
-            <label className="text-zinc-400 text-xs uppercase font-bold tracking-wider">
-                Año
-            </label>
-            <Popover open={openYear} onOpenChange={setOpenYear}>
-                <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={openYear} className="w-full justify-between bg-black border-zinc-700 text-white hover:bg-zinc-900">
-                    {selectedYear}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[120px] p-0 bg-black border-zinc-800 text-white">
-                <Command className="bg-black text-white">
-                    <CommandList>
-                    <CommandGroup>
-                        {AVAILABLE_YEARS.map((year) => (
-                        <CommandItem key={year} value={year} onSelect={(val) => { setSelectedYear(val); setOpenYear(false); }} className="text-zinc-300 hover:bg-zinc-800 cursor-pointer">
-                            <Check className={cn("mr-2 h-4 w-4", selectedYear === year ? "opacity-100 text-red-600" : "opacity-0")} />
-                            {year}
-                        </CommandItem>
-                        ))}
-                    </CommandGroup>
-                    </CommandList>
-                </Command>
-                </PopoverContent>
-            </Popover>
+        {/* 1. SELECCIONAR AÑO */}
+        <div className="text-start">
+          <label className="text-secondary small fw-bold mb-1">AÑO</label>
+          <select 
+              className="form-select bg-dark text-white border-secondary" 
+              value={selectedYear} 
+              onChange={e => setSelectedYear(e.target.value)}
+          >
+              {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
         </div>
-
-
-        {/* === COLUMNA 2: CARRERA (4 espacios) === */}
-        <div className="md:col-span-4 flex flex-col gap-2">
-          <label className="text-zinc-400 text-xs uppercase font-bold tracking-wider">
-            Gran Premio
-          </label>
-          <Popover open={openRace} onOpenChange={setOpenRace}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" role="combobox" aria-expanded={openRace} className="w-full justify-between bg-black border-zinc-700 text-white hover:bg-zinc-900">
-                {selectedRace ? races.find((r) => r.session_key === selectedRace)?.circuit_short_name : "Selecciona circuito..."}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[300px] p-0 bg-black border-zinc-800 text-white">
-              <Command className="bg-black text-white">
-                <CommandInput placeholder="Buscar circuito..." className="h-9 text-white" />
-                <CommandList>
-                    <CommandEmpty>No encontrado.</CommandEmpty>
-                    <CommandGroup>
-                    {races.map((race) => (
-                        <CommandItem key={race.session_key} value={race.circuit_short_name + " " + race.country_name} onSelect={() => handleSelectRace(race.session_key)} className="text-zinc-300 hover:bg-zinc-800 cursor-pointer">
-                        <Check className={cn("mr-2 h-4 w-4", selectedRace === race.session_key ? "opacity-100 text-red-600" : "opacity-0")} />
-                        {race.country_name} - {race.circuit_short_name}
-                        </CommandItem>
-                    ))}
-                    </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+  
+        {/* 2. SELECCIONAR CIRCUITO */}
+        <div className="text-start">
+          <label className="text-secondary small fw-bold mb-1">GRAN PREMIO</label>
+          <select 
+              className="form-select bg-dark text-white border-secondary"
+              value={selectedSession} 
+              onChange={handleSessionChange}
+              disabled={loading}
+          >
+              <option value="">Selecciona circuito...</option>
+              {sessions.map(s => (
+                  <option key={s.session_key} value={s.session_key}>
+                      {s.location} - {s.country_name}
+                  </option>
+              ))}
+          </select>
         </div>
-
-        {/* === COLUMNA 3: PILOTO (4 espacios) === */}
-        <div className="md:col-span-4 flex flex-col gap-2">
-          <label className="text-zinc-400 text-xs uppercase font-bold tracking-wider">
-            Piloto
-          </label>
-          <Popover open={openDriver} onOpenChange={setOpenDriver}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" role="combobox" aria-expanded={openDriver} disabled={!selectedRace || loadingDrivers} className="w-full justify-between bg-black border-zinc-700 text-white hover:bg-zinc-900 disabled:opacity-50">
-                {loadingDrivers ? "Cargando..." : (selectedDriver ? drivers.find((d) => d.driver_number === selectedDriver)?.full_name : "Selecciona piloto...")}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[300px] p-0 bg-black border-zinc-800 text-white">
-              <Command className="bg-black text-white">
-                <CommandInput placeholder="Buscar piloto..." className="h-9 text-white" />
-                <CommandList>
-                    <CommandEmpty>No encontrado.</CommandEmpty>
-                    <CommandGroup>
-                    {drivers.map((driver) => (
-                        <CommandItem key={driver.driver_number} value={driver.full_name + " " + driver.driver_number} onSelect={() => { setSelectedDriver(driver.driver_number); setOpenDriver(false); }} className="text-zinc-300 hover:bg-zinc-800 cursor-pointer">
-                        <Check className={cn("mr-2 h-4 w-4", selectedDriver === driver.driver_number ? "opacity-100 text-red-600" : "opacity-0")} />
-                        <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: `#${driver.team_colour}` }}></span>
-                        <span className="font-bold mr-2">#{driver.driver_number}</span>
-                        {driver.full_name}
-                        </CommandItem>
-                    ))}
-                    </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+  
+        {/* 3. SELECCIONAR PILOTO */}
+        <div className="text-start">
+          <label className="text-secondary small fw-bold mb-1">PILOTO</label>
+          <select 
+              className="form-select bg-dark text-white border-secondary"
+              value={selectedDriver} 
+              onChange={e => setSelectedDriver(e.target.value)}
+              disabled={!selectedSession}
+          >
+              <option value="">Selecciona piloto...</option>
+              {drivers.map(d => (
+                  <option key={d.driver_number} value={d.driver_number}>
+                      {d.full_name} (#{d.driver_number})
+                  </option>
+              ))}
+          </select>
         </div>
-
-        {/* === COLUMNA 4: START (2 espacios) === */}
-        <div className="md:col-span-2">
-          <Button className="w-full bg-red-600 hover:bg-red-700 text-white font-bold tracking-widest shadow-[0_0_15px_rgba(220,38,38,0.5)] border-none" onClick={handleStart} disabled={!selectedRace || !selectedDriver}>
-            START
-          </Button>
-        </div>
-        
-      </div>
+  
+        {/* 4. BOTÓN START */}
+        <button 
+          className="btn btn-danger w-100 fw-bold mt-2 py-2"
+          onClick={handleStart}
+          disabled={!selectedDriver || loading}
+        >
+          {loading ? 'Cargando...' : 'START'}
+        </button>
+  
     </div>
   );
 }
