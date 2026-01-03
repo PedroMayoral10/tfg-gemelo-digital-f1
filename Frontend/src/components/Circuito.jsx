@@ -124,12 +124,21 @@ export default function CircuitMap() {
                   <polyline points={polylinePoints} fill="none" stroke="#333" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
                   <polyline points={polylinePoints} fill="none" stroke="#222" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
                   {carPosition && (
-                    <g transform={`translate(${carCoords.x}, ${carCoords.y})`}>
-                      <circle r="20" fill="none" stroke="#e10600" strokeWidth="1" opacity="0.6">
-                        <animate attributeName="r" from="5" to="30" dur="1.5s" repeatCount="indefinite" />
-                        <animate attributeName="opacity" from="0.8" to="0" dur="1.5s" repeatCount="indefinite" />
-                      </circle>
-                      <circle r="6" fill="#e10600" stroke="white" strokeWidth="2" />
+                    <g 
+                      // Usamos style para que CSS pueda animar la propiedad transform
+                      style={{ 
+                        transform: `translate(${carCoords.x}px, ${carCoords.y}px)`, 
+                        transition: "transform 300ms linear" 
+                      }}
+                    >
+                        {/* Efecto Radar (Onda expansiva) */}
+                        <circle r="20" fill="none" stroke="#e10600" strokeWidth="1" opacity="0.6">
+                            <animate attributeName="r" from="5" to="30" dur="1.5s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" from="0.8" to="0" dur="1.5s" repeatCount="indefinite"/>
+                        </circle>
+                        
+                        {/* Punto del coche (Rojo F1) */}
+                        <circle r="6" fill="#e10600" stroke="white" strokeWidth="2" />
                     </g>
                   )}
                 </svg>
