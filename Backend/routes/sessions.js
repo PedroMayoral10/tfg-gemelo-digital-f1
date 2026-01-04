@@ -5,7 +5,7 @@ var router = express.Router();
 //Aqui accedemos a la API de OpenF1, no a MongoDB
 const OPENF1_BASE = 'https://api.openf1.org';
 
-// --- NUEVO: Función auxiliar Fetch (Necesaria aquí también) ---
+// --- Función auxiliar Fetch ---
 async function fetchWithTimeout(url, options = {}, timeout = 10000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
@@ -21,9 +21,7 @@ async function fetchWithTimeout(url, options = {}, timeout = 10000) {
   }
 }
 
-// --- NUEVO: RUTA PARA OBTENER INFO DE UNA SESIÓN ESPECÍFICA ---
-// Esta ruta es vital para saber el "date_start"
-// Uso: GET /sessions/9161
+// OBTENER INFO DE UNA SESIÓN ESPECÍFICA ---
 router.get('/openf1/:session_key', async function(req, res) {
     const session_key = req.params.session_key;
 
@@ -45,6 +43,27 @@ router.get('/openf1/:session_key', async function(req, res) {
         console.error(error);
         res.status(500).json({ error: "Error al conectar con OpenF1" });
     }
+});
+
+// OBTENER TODAS LAS CARRERAS DE UN AÑO
+router.get('/openf1/year/:year', async function(req, res) {
+
+    const year = req.params.year;
+
+    if (!year) {
+        return res.status(400).json({ error: "Falta el año" });
+    }
+
+    try {
+        // Pedimos a la API externa solo las carreras (session_name=Race) de ese año
+        const url = `${OPENF1_BASE}/v1/sessions?year=${year}&session_name=Race`;
+        const data = await fetchWithTimeout(url);
+        res.json(data);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Error al obtener sesiones" });
+    }
+
 });
 
 

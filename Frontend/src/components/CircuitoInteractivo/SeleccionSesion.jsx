@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { URL_API_BACKEND } from "../config"; // Asegúrate de que esta ruta es correcta
+import { URL_API_BACKEND } from "../../config"; // Asegúrate de que esta ruta es correcta
 
 export default function SessionSelector({ onStartSimulation }) {
   
@@ -9,7 +9,7 @@ export default function SessionSelector({ onStartSimulation }) {
   const [selectedYear, setSelectedYear] = useState(2023); // Año por defecto
   
   const [sessions, setSessions] = useState([]);
-  const [selectedSession, setSelectedSession] = useState(""); // <--- Esta era la que fallaba
+  const [selectedSession, setSelectedSession] = useState(""); 
   
   const [drivers, setDrivers] = useState([]);
   const [selectedDriver, setSelectedDriver] = useState("");
@@ -19,13 +19,12 @@ export default function SessionSelector({ onStartSimulation }) {
   // --- 1. CARGAR SESIONES AL CAMBIAR DE AÑO ---
   useEffect(() => {
     setLoading(true);
-    // Filtramos directamente en la URL por "Race" para evitar duplicados
-    fetch(`https://api.openf1.org/v1/sessions?year=${selectedYear}&session_name=Race`)
+    fetch(`${URL_API_BACKEND}/sessions/openf1/year/${selectedYear}`)
       .then(res => res.json())
       .then(data => {
+        if(data.error) throw new Error(data.error);
         setSessions(data);
-        // Reseteamos selecciones al cambiar de año
-        setSelectedSession("");
+        setSelectedSession(""); 
         setDrivers([]);
         setSelectedDriver("");
         setLoading(false);
@@ -46,9 +45,10 @@ export default function SessionSelector({ onStartSimulation }) {
     if (!sessionKey) return;
 
     setLoading(true);
-    fetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`)
+    fetch(`${URL_API_BACKEND}/drivers/openf1/${sessionKey}`)
       .then(res => res.json())
       .then(data => {
+        if(data.error) throw new Error(data.error);
         // A veces la API devuelve duplicados de pilotos, usamos un Map para filtrar por número
         const uniqueDrivers = [...new Map(data.map(item => [item.driver_number, item])).values()];
         // Ordenamos por número
