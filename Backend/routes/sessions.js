@@ -1,8 +1,6 @@
 var express = require('express');
 var router = express.Router();
 
-
-//Aqui accedemos a la API de OpenF1, no a MongoDB
 const OPENF1_BASE = 'https://api.openf1.org';
 
 // --- Función auxiliar Fetch ---
@@ -21,7 +19,8 @@ async function fetchWithTimeout(url, options = {}, timeout = 10000) {
   }
 }
 
-// OBTENER INFO DE UNA SESIÓN ESPECÍFICA ---
+// Obtener información de una sesión específica OpenF1 (solo de 2023 a 2025) ---
+
 router.get('/openf1/:session_key', async function(req, res) {
     const session_key = req.params.session_key;
 
@@ -44,29 +43,5 @@ router.get('/openf1/:session_key', async function(req, res) {
         res.status(500).json({ error: "Error al conectar con OpenF1" });
     }
 });
-
-// OBTENER TODAS LAS CARRERAS DE UN AÑO
-router.get('/openf1/year/:year', async function(req, res) {
-
-    const year = req.params.year;
-
-    if (!year) {
-        return res.status(400).json({ error: "Falta el año" });
-    }
-
-    try {
-        // Pedimos a la API externa solo las carreras (session_name=Race) de ese año
-        const url = `${OPENF1_BASE}/v1/sessions?year=${year}&session_name=Race`;
-        const data = await fetchWithTimeout(url);
-        res.json(data);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Error al obtener sesiones" });
-    }
-
-});
-
-
-
 
 module.exports = router;
