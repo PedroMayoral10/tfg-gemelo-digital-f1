@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 // Importamos las "piezas de lego" de Shadcn
 import {
   NavigationMenu,
@@ -9,12 +10,33 @@ import {
 } from "@/components/ui/navigation-menu";
 
 export default function Navbar() {
+  
+  // Estado para saber si hay alguien logueado o es un invitado
+  const [estaLogueado, setEstaLogueado] = useState(false);
+  
+  const navigate = useNavigate();
+
+  // Función para cerrar sesión
+  const handleLogout = () => {
+    // Borramos el token (Limpieza explícita)
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+
+    // Redirigimos al Login
+    navigate('/');
+  };
+
+  // Al cargar la barra, comprobamos si existe el token
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    // Si hay token, es true. Si es null, es false.
+    setEstaLogueado(!!token);
+  }, []);
+
   return (
-    // ESTE ES TU CONTENEDOR DE SIEMPRE (Tu diseño)
     <div className="p-3 shadow-sm border-bottom border-secondary bg-dark">
       <div className="d-flex justify-content-between align-items-center">
         
-        {/* TU LOGO / TÍTULO CON ESTILO F1 */}
         <h1 
           className="text-uppercase fw-bold m-0 h4 text-white" 
           style={{ borderLeft: '5px solid #e10600', paddingLeft: '15px' }}
@@ -22,16 +44,12 @@ export default function Navbar() {
           F1 Digital Twin
         </h1>
 
-        {/* AQUÍ USAMOS LAS PIEZAS DE SHADCN */}
         <NavigationMenu>
           <NavigationMenuList className="d-flex gap-2 list-unstyled m-0">
             
             {/* BOTÓN 1: CIRCUITO */}
             <NavigationMenuItem>
-              {/* 'Link' es el componente que hace que la página no se recargue */}
               <Link to="/circuito-interactivo">
-                {/* 'NavigationMenuLink' es el estilo bonito de Shadcn */}
-                {/* Añadimos clases para que se vea bien en fondo oscuro */}
                 <NavigationMenuLink className={`${navigationMenuTriggerStyle()} bg-transparent text-white hover:bg-white hover:text-black`}>
                   Circuito interactivo
                 </NavigationMenuLink>
@@ -56,6 +74,28 @@ export default function Navbar() {
               </Link>
             </NavigationMenuItem>
 
+            {/* INICIAR/CERRAR SESIÓN */}
+            {estaLogueado ? (
+                <NavigationMenuItem>
+                    <button 
+                      onClick={handleLogout}
+                      className={`${navigationMenuTriggerStyle()} bg-transparent text-danger fw-bold border-0 hover:bg-danger hover:text-white`}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      Cerrar Sesión
+                    </button>
+                </NavigationMenuItem>
+            ) : (
+                <NavigationMenuItem>
+                    <button 
+                        onClick={() => navigate('/')} // <--- Usamos navigate en vez de Link
+                        className={`${navigationMenuTriggerStyle()} bg-transparent text-danger fw-bold border-0 hover:bg-danger hover:text-white`}
+                        style={{ cursor: 'pointer' }}
+                    >
+                        Iniciar Sesión
+                    </button>
+                </NavigationMenuItem>
+            )}
           </NavigationMenuList>
         </NavigationMenu>
 

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import CircuitMap from './Circuito';
 import SessionSelector from './SeleccionSesion';
+import { URL_API_BACKEND } from "../../config";
 
 export default function CircuitoInteractivo() {
   
@@ -16,7 +17,7 @@ export default function CircuitoInteractivo() {
 
     return (
 
-        <div className="flex-grow-1 p-4 d-flex justify-content-center align-items-center w-100">
+        <div className="flex-grow-1 p-4 d-flex justify-content-center align-items-center w-100 overflow-hidden">
             <div className="w-100 h-100" style={{ maxWidth: '1600px' }}>
 
                 <div className="container-fluid h-100 py-3">
