@@ -9,7 +9,7 @@ import Register from './components/InicioSesion/Register';
 
 function App() {
 
-  const location = useLocation();
+  const location = useLocation(); // Hook para detectar cambios de ruta
 
 
   //Usamos useRef para no rerenderizar el componente innecesariamente

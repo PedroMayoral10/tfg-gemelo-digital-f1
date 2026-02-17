@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import CircuitMap from './Circuito';
-import SessionSelector from './SeleccionSesion';
-import { URL_API_BACKEND } from "../../config";
+import Circuito from './Circuito';
+import SelectorSesion from './SeleccionSesion';
 
 export default function CircuitoInteractivo() {
   
@@ -12,7 +11,7 @@ export default function CircuitoInteractivo() {
   // Función que ejecutará la funcion de inicio de simulación en el selector de sesión
   const handleStartCircuit = () => {
     setSimulationActive(true);
-    setRefreshTrigger(prev => prev + 1); // Prev+1 para forzar siempre un cambio de valor
+    setRefreshTrigger(prev => prev + 1); // Es un contador para que cuando el usuario pulse "Iniciar simulación" se recargue el mapa con los nuevos datos de la sesión seleccionada
   };
 
     return (
@@ -26,7 +25,7 @@ export default function CircuitoInteractivo() {
                         {/* --- COLUMNA IZQUIERDA: MAPA DEL CIRCUITO --- */}
                         <div className="col-lg-9 h-100 mb-3 mb-lg-0">
                             {/* Pasamos el estado al mapa para que sepa cuándo trabajar */}
-                            <CircuitMap active={simulationActive} trigger={refreshTrigger} />
+                            <Circuito active={simulationActive} trigger={refreshTrigger} />
                         </div>
 
                         {/* --- COLUMNA DERECHA: SELECCION DE CARRERA/AÑO/PILOTO --- */}
@@ -40,7 +39,7 @@ export default function CircuitoInteractivo() {
 
                                     <div className="mb-4">
                                         {/* Pasamos la función al selector para que nos avise */}
-                                        <SessionSelector onStartSimulation={handleStartCircuit} />
+                                        <SelectorSesion onStartSimulation={handleStartCircuit} />
                                     </div>
 
                                     <div className="mt-auto text-white-50">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'; // <--- AÑADIDO useRef
+import { useState, useEffect, useMemo, useRef } from 'react'; // 
 import { toast } from 'react-toastify';
 import { URL_API_BACKEND } from "../../config";
 
@@ -12,28 +12,31 @@ export default function SessionSelector({ onStartSimulation }) {
   const [listaFavoritos, setListaFavoritos] = useState([]);
 
   const [selectedYear, setSelectedYear] = useState(2023); 
-  const [selectedSession, setSelectedSession] = useState(""); 
+  const [selectedCircuit, setSelectedCircuit] = useState(""); 
   const [selectedDriver, setSelectedDriver] = useState("");   
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); 
 
 
-  // Guardamos aquí lo que queremos cargar mientras esperamos al fetch
+  /* Guardamos aquí lo que queremos cargar mientras esperamos al fetch. Para el caso de favoritos, cuando queramos
+     cargar una configuración del usuario, no podemos hacerlo de golpe, hay que seleccionar primero el año, esperar
+     a que carguen todas las carreras de ese año, seleccionar la carrera, esperar a que carguen los pilotos, y 
+     entonces seleccionar el piloto. */
+
   const pendingLoad = useRef(null); 
 
 
   // Comprobamos si la configuración actual es un favorito
 
   const esFavoritoActual = useMemo(() => {
-      if (!selectedSession || !selectedDriver) return false;
+      if (!selectedCircuit || !selectedDriver) return false;
       return listaFavoritos.some(fav => 
           String(fav.year) === String(selectedYear) &&
-          String(fav.round) === String(selectedSession) &&
+          String(fav.round) === String(selectedCircuit) &&
           String(fav.driverId) === String(selectedDriver)
       );
-  }, [listaFavoritos, selectedYear, selectedSession, selectedDriver]);
+  }, [listaFavoritos, selectedYear, selectedCircuit, selectedDriver]);
 
-  // Funcionalidades
 
   // Obtenemos la lista de favoritos
 
@@ -54,7 +57,7 @@ export default function SessionSelector({ onStartSimulation }) {
   const handleToggleFavorito = async () => {
         const token = localStorage.getItem('token');
         if (!token) return toast.error("Inicia sesión para gestionar favoritos.");
-        if (!selectedSession || !selectedDriver) return toast.warning("Selecciona circuito y piloto primero.");
+        if (!selectedCircuit || !selectedDriver) return toast.warning("Selecciona circuito y piloto primero.");
 
         try {
             if (esFavoritoActual) {
@@ -63,21 +66,21 @@ export default function SessionSelector({ onStartSimulation }) {
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({ 
                         year: selectedYear, 
-                        round: selectedSession, 
+                        round: selectedCircuit, 
                         driverId: selectedDriver 
                     })
                 });
-                toast.info("💔 Eliminado de favoritos");
+                toast.success("💔 Eliminado de favoritos");
             } else {
-                const currentSessionData = sessions.find(s => s.session_key == selectedSession);
-                const circuitNameStr = currentSessionData ? `${currentSessionData.location} - ${currentSessionData.country_name}` : `Sesión ${selectedSession}`;
+                const currentSessionData = sessions.find(s => s.session_key == selectedCircuit);
+                const circuitNameStr = currentSessionData ? `${currentSessionData.location} - ${currentSessionData.country_name}` : `Sesión ${selectedCircuit}`;
 
                 await fetch(`${URL_API_BACKEND}/interactive_favs/add`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({ 
                         year: selectedYear, 
-                        round: selectedSession, 
+                        round: selectedCircuit, 
                         driverId: selectedDriver, 
                         circuitName: circuitNameStr 
                     })
@@ -94,7 +97,7 @@ export default function SessionSelector({ onStartSimulation }) {
   // Cargar configuración desde la lista de favoritos
   const cargarConfiguracion = (fav) => {
         toast.info(`Cargando configuración...`);
-        
+          
         // Guardamos en la "memoria temporal" lo que queremos conseguir
         pendingLoad.current = { 
             session: fav.round, 
@@ -105,86 +108,84 @@ export default function SessionSelector({ onStartSimulation }) {
         // Si el año ya es el mismo, forzamos la actualización de la sesión manualmente
         if (String(selectedYear) === String(fav.year)) {
             // Si el año no cambia, el useEffect del año no saltará, así que pasamos al paso 2 manual
-            setSelectedSession(fav.round);
+            setSelectedCircuit(fav.round);
         } else {
             setSelectedYear(fav.year);
         }
   };
 
-  // Iniciar simulación
-
+  // Iniciar simulación (coche y mapa del circuito) con la configuración seleccionada
   const handleStart = () => {
-    if (!selectedSession || !selectedDriver) { toast.warning("Faltan datos"); return; }
+    if (!selectedCircuit || !selectedDriver) { toast.warning("Faltan datos"); return; }
     fetch(`${URL_API_BACKEND}/location/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_key: selectedSession, driver_number: selectedDriver })
+        body: JSON.stringify({ session_key: selectedCircuit, driver_number: selectedDriver })
     }).then(res => res.json()).then(d => {
         if (!d.error) { toast.success(`Simulación iniciada`); if (onStartSimulation) onStartSimulation(); }
         else toast.error(d.error);
     }).catch(e => toast.error("Error conexión"));
   };
 
-  // Efecto que carga los favoritos al montar el componente
 
+  // --- EFECTOS ---
+
+
+  //Carga los favoritos del usuario
   useEffect(() => {
       fetchFavoritos();
   }, []);
 
-  // Carga de sesiones 
+  // Carga de circuitos en los que se ha corrido en ese año. (Se accede una vez se ha seleccionado el año)
   useEffect(() => {
     setLoading(true);
     fetch(`${URL_API_BACKEND}/races/openf1/year/${selectedYear}`)
-      .then(res => res.json())
+      .then(res => res.json()) 
       .then(data => { 
           setSessions(data.error ? [] : data); 
           setLoading(false); 
 
-          // --- LOGICA INTELIGENTE ---
           // ¿Tenemos algo pendiente de cargar en la memoria?
           if (pendingLoad.current && pendingLoad.current.session) {
               // Si hay algo pendiente, lo aplicamos AHORA que ya tenemos las carreras
-              setSelectedSession(pendingLoad.current.session);
+              setSelectedCircuit(pendingLoad.current.session);
               // (No borramos pendingLoad todavía, nos falta el piloto)
           } else {
               // Comportamiento normal: Si cambio de año a mano, reseteo todo
-              setSelectedSession(""); 
+              setSelectedCircuit(""); 
               setDrivers([]);
           }
       })
       .catch(err => { console.error(err); setLoading(false); });
   }, [selectedYear]);
 
-  // Carga de pilotos 
+  // Carga de pilotos una vez se ha seleccionado el año y el circuito
   useEffect(() => {
-    if (!selectedSession) { 
+    if (!selectedCircuit) { 
         setDrivers([]); 
         return; 
     }
 
     setLoading(true);
-    fetch(`${URL_API_BACKEND}/drivers/openf1/${selectedSession}`)
+    fetch(`${URL_API_BACKEND}/drivers/openf1/${selectedCircuit}`)
       .then(res => res.json())
       .then(data => {
         const unique = [...new Map(data.map(item => [item.driver_number, item])).values()];
         setDrivers(unique.sort((a, b) => a.driver_number - b.driver_number));
         setLoading(false);
 
-        // Si hay algo pendiente de cargar en la memoria, lo aplicamos
+        // Hay algo pendiente de cargar en la memoria y ese pendiente es un piloto? (Esto pasará cuando vengamos de un favorito)
         if (pendingLoad.current && pendingLoad.current.driver) {
              setSelectedDriver(pendingLoad.current.driver);
              pendingLoad.current = null;
         } else {
-            // Comportamiento normal: reseteo piloto al cambiar circuito
+            // Comportamiento normal: reseteo el piloto si se cambia  de circuito
             setSelectedDriver("");
         }
       })
       .catch(err => { console.error(err); setLoading(false); });
 
-  }, [selectedSession]);
-
-
-  // Renderizado 
+  }, [selectedCircuit]);
 
   return (
     <div className="d-flex flex-column gap-2 w-100">
@@ -240,10 +241,10 @@ export default function SessionSelector({ onStartSimulation }) {
           <label className="text-secondary small fw-bold mb-0">GRAN PREMIO</label>
           <select 
             className="form-select form-select-sm bg-dark text-white border-secondary" 
-            value={selectedSession} 
+            value={selectedCircuit} 
             onChange={e => { 
                 pendingLoad.current = null; // Usuario toca manual -> anulamos automático
-                setSelectedSession(e.target.value); 
+                setSelectedCircuit(e.target.value); 
                 setSelectedDriver(""); 
             }} 
             disabled={loading}
@@ -259,9 +260,9 @@ export default function SessionSelector({ onStartSimulation }) {
             className="form-select form-select-sm bg-dark text-white border-secondary" 
             value={selectedDriver} 
             onChange={e => setSelectedDriver(e.target.value)} 
-            disabled={!selectedSession}
+            disabled={!selectedCircuit}
           >
-              <option value="">Selecciona piloto...</option>
+              <option value="">Selecciona piloto...</option> 
               {drivers.map(d => <option key={d.driver_number} value={d.driver_number}>{d.full_name} (#{d.driver_number})</option>)}
           </select>
         </div>

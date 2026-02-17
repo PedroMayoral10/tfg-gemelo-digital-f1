@@ -4,24 +4,24 @@ var router = express.Router();
 const OPENF1_BASE = 'https://api.openf1.org';
 
 // Configuración de tiempos
-const VELOCIDAD_REFRESCO = 270; 
-const BLOQUE_SEGUNDOS = 4;      
+const VELOCIDAD_REFRESCO = 270; // Tasa de la API
+const BLOQUE_SEGUNDOS = 4; // Cuando pidamos datos, vamos a pedir los datos de los próximos 4 segundos
 
 
 // --- ESTADO GLOBAL ---
 let ultimaRespuesta = null; 
 // Temporizadores que controlan la simulación
-let timerConsumo = null;    
-let timerLlenado = null;    
-let circuitoCache = null;   
+let timerConsumo = null; // Tiempo que se tarda en consumir el buffer y avanzar la simulación
+let timerLlenado = null; // Tiempo que se tarda en llenar el buffer con nuevos datos de la API
+let circuitoCache = null; 
 
-let colaDatos = []; 
+let colaDatos = []; // Buffer de datos de localización que se van consumiendo para avanzar la simulación, ordenados por fecha de la API
 
 let session_key = null;   
 let driver_number = null; 
 
-let cursorTiempoAPI = null;        
-let cursorTiempoSimulacion = null; 
+let cursorTiempoAPI = null; // Tiempo hasta el que hemos consumido datos de la API.       
+let cursorTiempoSimulacion = null; // Tiempo actual de la simulación, que avanza consumiendo el buffer.
 
 
 // Función auxiliar: Fetch con Timeout
@@ -35,52 +35,27 @@ async function fetchWithTimeout(url, options = {}, timeout = 10000) {
     clearTimeout(id);
     if (res.status === 429) throw new Error("429");
     if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
-    return await res.json();
+    return await res.json(); // Aqui se hace la solicitud a la API externa
   } catch (err) {
     clearTimeout(id);
     throw err;
   }
 }
 
-// Función para consumir los datos
-function consumirBuffer() {
-    if (!cursorTiempoSimulacion) return;
+/*  
+    *************************************************************            
+        LLENAR DE DATOS EL BUFFER PARA AVANZAR LA SIMULACIÓN
+    *************************************************************
+*/
 
-    cursorTiempoSimulacion = new Date(cursorTiempoSimulacion.getTime() + VELOCIDAD_REFRESCO);
-
-    let datoEncontrado = null;
-    let indiceCorte = -1; 
-
-    for (let i = 0; i < colaDatos.length; i++) {
-        const fechaDato = new Date(colaDatos[i].date);
-        
-        if (fechaDato <= cursorTiempoSimulacion) {
-            datoEncontrado = colaDatos[i];
-            indiceCorte = i; 
-        } else {
-            break; 
-        }
-    }
-
-    if (datoEncontrado) {
-        ultimaRespuesta = datoEncontrado;
-    }
-
-    if (indiceCorte !== -1) {
-        colaDatos.splice(0, indiceCorte + 1);
-    }
-}
-
-
-// Función para llenar el buffer
 async function llenarBuffer() {
-  // Verificación de seguridad: Si han parado la simulación (session_key null), no seguimos
+  // Si han parado la simulación, no seguimos
   if (!session_key || !driver_number) return; 
   
   if (cursorTiempoSimulacion) {
-      const diferencia = cursorTiempoAPI.getTime() - cursorTiempoSimulacion.getTime();
-      if (diferencia > 15000) {
-          timerLlenado = setTimeout(llenarBuffer, 2000);
+      const diferencia = cursorTiempoAPI.getTime() - cursorTiempoSimulacion.getTime(); 
+      if (diferencia > 15000) { // Si la API va más de 15 segundos por delante de la simulación, esperamos un poco antes de pedir más datos para no saturar el buffer
+          timerLlenado = setTimeout(llenarBuffer, 9000); // Ponemos 9 segundos para que baje esa diferencia a unos 6 segundos
           return;
       }
   }
@@ -104,15 +79,15 @@ async function llenarBuffer() {
     if (!session_key) return; 
 
     if (nuevosDatos.length > 0) {
-      colaDatos = [...colaDatos, ...nuevosDatos];
+      colaDatos = [...colaDatos, ...nuevosDatos]; // Añadimos al buffer los nuevos datos, que ya vienen ordenados por fecha
       console.log(`✅ [API] Buffer: ${colaDatos.length} items (Recibidos ${nuevosDatos.length})`);
-      cursorTiempoAPI = endObj;  
+      cursorTiempoAPI = endObj; // Avanzamos el cursor de la API al bloque siguiente de datos
       timerLlenado = setTimeout(llenarBuffer, 1000); 
 
     } else {
       console.log(`⚠️ [API] Hueco de datos detectado. Saltando...`);
       cursorTiempoAPI = endObj; 
-      timerLlenado = setTimeout(llenarBuffer, 100); 
+      timerLlenado = setTimeout(llenarBuffer, 100); // Timeout menor para encontrar datos lo antes posible
     }
 
   } catch (err) {
@@ -128,11 +103,52 @@ async function llenarBuffer() {
   }
 }
 
-// --- FUNCIÓN DE PARADA REAL ---
+/*  
+    *************************************************************            
+        CONSUMIR DATOS DEL BUFFER PARA AVANZAR LA SIMULACIÓN
+    *************************************************************
+*/
+
+function consumirBuffer() {
+    if (!cursorTiempoSimulacion) return;
+
+    cursorTiempoSimulacion = new Date(cursorTiempoSimulacion.getTime() + VELOCIDAD_REFRESCO); 
+
+    let datoEncontrado = null; 
+    let indiceCorte = -1; 
+
+    // Bucle para encontrar el último dato válido y más reciente al tiempo de simulación, y cortar el buffer hasta ese punto         
+
+    for (let i = 0; i < colaDatos.length; i++) {
+        const fechaDato = new Date(colaDatos[i].date);
+        
+        if (fechaDato <= cursorTiempoSimulacion) {
+            datoEncontrado = colaDatos[i]; // Si el dato es anterior o igual al tiempo de simulación, lo guardamos como última respuesta válida
+            indiceCorte = i; 
+        } else {
+            break; // Si el dato es posterior al tiempo de simulación, paramos de buscar
+        }
+    }
+
+    if (datoEncontrado) {
+        ultimaRespuesta = datoEncontrado;
+    }
+
+    if (indiceCorte !== -1) {
+        colaDatos.splice(0, indiceCorte + 1);
+    }
+}
+
+/*  
+    *************************************************************            
+                        DETENER SIMULACION
+    *************************************************************
+*/
+
 function detenerSimulacion() {
     // Terminamos temporizadores
     if (timerConsumo) {
-        clearInterval(timerConsumo);
+        clearInterval(timerConsumo); 
         timerConsumo = null;
     }
     if (timerLlenado) {

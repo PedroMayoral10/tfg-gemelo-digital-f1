@@ -19,7 +19,7 @@ async function fetchWithTimeout(url, options = {}, timeout = 10000) {
   }
 }
 
-// Obtener información de una sesión específica OpenF1 (solo de 2023 a 2025) ---
+// Obtener información de una sesión específica OpenF1 (solo de 2023 a 2025). Por ahora sin utilizar ---
 
 router.get('/openf1/:session_key', async function(req, res) {
     const session_key = req.params.session_key;

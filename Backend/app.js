@@ -12,9 +12,9 @@ var racesRouter = require('./routes/races'); // importar el enrutador de races d
 var authRouter = require('./routes/user'); // importar el enrutador de user del archivo user.js del directorio routes
 var interactiveFavsRouter = require('./routes/interactive_favs'); // importar el enrutador de interactive_favs del archivo interactive_favs.js del directorio routes
 
-var app = express();
+var app = express(); 
 
-app.use(cors());
+app.use(cors()); // Habilitar CORS para permitir solicitudes desde el frontend (React) a este backend (Express)
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

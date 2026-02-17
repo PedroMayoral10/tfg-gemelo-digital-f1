@@ -28,7 +28,7 @@ export default function Login() {
     return () => clearInterval(intervalo);
   }, []);
 
-  const navigate = useNavigate();
+  const navigate = useNavigate(); 
 
   // -Función para login como invitado-
   const handleGuestLogin = () => {

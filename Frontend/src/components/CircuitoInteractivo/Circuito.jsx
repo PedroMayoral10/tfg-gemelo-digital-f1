@@ -9,12 +9,12 @@ const mapCoordinates = (val, min, max, size) => {
 export default function CircuitMap({ active, trigger }) {
 
   // --- ESTADOS ---
-   const [trackPoints, setTrackPoints] = useState([]); 
+  const [trackPoints, setTrackPoints] = useState([]); 
   const [carPosition, setCarPosition] = useState(null); 
   const [bounds, setBounds] = useState({ minX: 0, maxX: 0, minY: 0, maxY: 0 }); 
   const [loadingMap, setLoadingMap] = useState(false); 
 
-  // --- EFECTO 1: CARGAR TRAZADO ---
+  // --- EFECTO 1: CARGAR TRAZADO --- 
   useEffect(() => {
 
     if (!active) {
@@ -48,7 +48,7 @@ export default function CircuitMap({ active, trigger }) {
       });
   }, [active, trigger]); // Dependemos de active y trigger que vienen del padre (CircuitoInteractivo)
 
-  // --- EFECTO 2: Mover el coche y limpiar el intervalo del componente ---
+  // --- EFECTO 2: Mover el coche y limpiar el intervalo del componente --- 
   useEffect(() => {
     if (!active) return;
 
@@ -70,10 +70,12 @@ export default function CircuitMap({ active, trigger }) {
 
 
   // --- DIBUJO SVG DEL CIRCUITO ---
-  const svgSize = 800; 
-  const padding = 50;
+  const svgSize = 800; // 800x800 para el SVG
+  const padding = 50; 
 
-  // Trazado del circuito 
+  // --- CALCULOS PARA EL TRAZADO Y EL COCHE ---
+
+  // Trazado del circuito  useMemo para no recalcularlo en cada renderizado para evitar cálculos no necesarios, solo cuando cambien trackPoints o bounds. Es una cache
   const polylinePoints = useMemo(() => {
       return trackPoints.map(p => {
         const x = mapCoordinates(p.x, bounds.minX, bounds.maxX, svgSize - padding * 2) + padding; // Añadimos padding para no pegarse a los bordes
