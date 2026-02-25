@@ -46,6 +46,7 @@ router.post('/add', verifyToken, async function(req, res) {
         console.error(error);
         res.status(500).json({ error: "Error al guardar favorito" });
     }
+
 });
 
 // Obtener la lista de simulaciones favoritas del usuario
@@ -65,29 +66,29 @@ router.get('/list', verifyToken, async function(req, res) {
         console.error(error);
         res.status(500).json({ error: "Error al obtener favoritos" });
     }
+
 });
 
 // Borrar de favoritos una simulación específica
-router.post('/remove', verifyToken, async function(req, res) {
+router.delete('/remove/:id', verifyToken, async function(req, res) {
 
     try {
         const db = await connectToDB();
-        const { year, round, driverId } = req.body;
-
-        // Borramos el documento que coincida con el usuario y los datos de la carrera
-        await db.collection('interactive_favourites').deleteOne({
-            userId: new ObjectId(req.user._id),
-            year: year,
-            round: round,
-            driverId: driverId
+        
+        const result = await db.collection('interactive_favourites').deleteOne({
+            _id: new ObjectId(req.params.id),
+            userId: new ObjectId(req.user._id) 
         });
 
-        res.status(200).json({ message: "Eliminado correctamente" });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: "No se encontró el favorito" });
+        }
 
+        res.status(200).json({ message: "Eliminado correctamente" });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Error al eliminar favorito" });
+        res.status(500).json({ error: "Error al eliminar" });
     }
+
 });
 
 module.exports = router;

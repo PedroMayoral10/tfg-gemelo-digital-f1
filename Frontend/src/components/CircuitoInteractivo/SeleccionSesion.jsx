@@ -28,15 +28,16 @@ export default function SessionSelector({ onStartSimulation }) {
 
   // Comprobamos si la configuración actual es un favorito
 
-  const esFavoritoActual = useMemo(() => {
-      if (!selectedCircuit || !selectedDriver) return false;
-      return listaFavoritos.some(fav => 
+  const favoritoActual = useMemo(() => {
+      if (!selectedCircuit || !selectedDriver) return null;
+      return listaFavoritos.find(fav => 
           String(fav.year) === String(selectedYear) &&
           String(fav.round) === String(selectedCircuit) &&
           String(fav.driverId) === String(selectedDriver)
       );
   }, [listaFavoritos, selectedYear, selectedCircuit, selectedDriver]);
 
+  const esFavoritoActual = !!favoritoActual;
 
   // Obtenemos la lista de favoritos
 
@@ -61,14 +62,11 @@ export default function SessionSelector({ onStartSimulation }) {
 
         try {
             if (esFavoritoActual) {
-                await fetch(`${URL_API_BACKEND}/interactive_favs/remove`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ 
-                        year: selectedYear, 
-                        round: selectedCircuit, 
-                        driverId: selectedDriver 
-                    })
+                await fetch(`${URL_API_BACKEND}/interactive_favs/remove/${favoritoActual._id}`, {
+                    method: 'DELETE',
+                    headers: { 
+                        'Authorization': `Bearer ${token}` 
+                    }
                 });
                 toast.success("💔 Eliminado de favoritos");
             } else {
