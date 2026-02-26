@@ -5,7 +5,7 @@ const mapCoordinates = (val, min, max, size) => {
   return ((val - min) / (max - min)) * size;
 };
 
-export default function CircuitMap({ active, trigger, followedDriver }) {
+export default function Circuito({ active, trigger, followedDriver, drivers }) {
   const [trackPoints, setTrackPoints] = useState([]);
   const [allPositions, setAllPositions] = useState({}); 
   const [bounds, setBounds] = useState({ minX: 0, maxX: 0, minY: 0, maxY: 0 });
@@ -13,6 +13,16 @@ export default function CircuitMap({ active, trigger, followedDriver }) {
 
   const svgSize = 800;
   const padding = 50;
+
+  const driverColors = useMemo(() => {
+    const map = {};
+    drivers.forEach(d => {
+      // Si team_colour no existe, ponemos blanco.
+      map[d.driver_number] = d.team_colour ? `#${d.team_colour}` : "#ffffff";
+    });
+    return map;
+  }, [drivers]);
+
 
   useEffect(() => {
     if (!active) {
@@ -115,13 +125,14 @@ export default function CircuitMap({ active, trigger, followedDriver }) {
             if (followedDriver && followedDriver !== driverNum) return null;
             const coords = getScaledCoords(allPositions[driverNum]);
             const isFollowed = followedDriver === driverNum;
+            const teamColor = driverColors[driverNum] || "#ffffff";
             return (
               <g key={driverNum} style={{ transform: `translate(${coords.x}px, ${coords.y}px)`, transition: "transform 200ms linear" }}>
-                <circle r="15" fill="none" stroke={isFollowed ? "#e10600" : "#ffffff"} strokeWidth="1" opacity="0.6">
+                <circle r="15" fill="none" stroke={isFollowed ? "#e10600" : "teamColor"} strokeWidth="1" opacity="0.6">
                   <animate attributeName="r" from="5" to="25" dur="2s" repeatCount="indefinite" />
                   <animate attributeName="opacity" from="0.6" to="0" dur="2s" repeatCount="indefinite" />
                 </circle>
-                <circle r="6" fill={isFollowed ? "#e10600" : "#555"} stroke="white" strokeWidth="2" />
+                <circle r="6" fill={teamColor} stroke="white" strokeWidth="2" />
                 <text y="-12" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold" style={{ pointerEvents: 'none', textShadow: '1px 1px 2px black' }}>{driverNum}</text>
               </g>
             );

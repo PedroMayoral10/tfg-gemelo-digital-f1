@@ -5,8 +5,8 @@ import SelectorSesion from './SeleccionSesion';
 export default function CircuitoInteractivo() {
   const [simulationActive, setSimulationActive] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  // Nuevo estado para saber a quién estamos siguiendo
   const [selectedDriver, setSelectedDriver] = useState("");
+  const [driversData, setDriversData] = useState([]);
 
   const handleStartCircuit = (driverId) => {
     setSelectedDriver(driverId); // Guardamos el ID (puede ser "" para todos)
@@ -20,11 +20,11 @@ export default function CircuitoInteractivo() {
         <div className="container-fluid h-100 py-3">
           <div className="row h-100">
             <div className="col-lg-9 h-100 mb-3 mb-lg-0">
-              {/* Pasamos el driver seleccionado al mapa */}
               <Circuito 
                 active={simulationActive} 
                 trigger={refreshTrigger} 
-                followedDriver={selectedDriver} 
+                followedDriver={selectedDriver}
+                drivers={driversData} 
               />
             </div>
 
@@ -36,7 +36,10 @@ export default function CircuitoInteractivo() {
                   </h5>
 
                   <div className="mb-4">
-                    <SelectorSesion onStartSimulation={handleStartCircuit} />
+                    <SelectorSesion 
+                      onStartSimulation={handleStartCircuit}
+                      setExternalDrivers={setDriversData} // Obtenemos los drivers del componente hijo del selector, para pasarlos al otro hijo y así poder usar sus datos.
+                    />
                   </div>
 
                   <div className="mt-auto text-white-50">

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'; //
 import { toast } from 'react-toastify';
 import { URL_API_BACKEND } from "../../config";
 
-export default function SessionSelector({ onStartSimulation }) {
+export default function SessionSelector({ onStartSimulation,setExternalDrivers }) {
   
   //ESTADOS
   
@@ -160,7 +160,8 @@ export default function SessionSelector({ onStartSimulation }) {
   // Carga de pilotos una vez se ha seleccionado el año y el circuito
   useEffect(() => {
     if (!selectedCircuit) { 
-        setDrivers([]); 
+        setDrivers([]);
+        if (setExternalDrivers) setExternalDrivers([]); 
         return; 
     }
 
@@ -169,7 +170,11 @@ export default function SessionSelector({ onStartSimulation }) {
       .then(res => res.json())
       .then(data => {
         const unique = [...new Map(data.map(item => [item.driver_number, item])).values()];
-        setDrivers(unique.sort((a, b) => a.driver_number - b.driver_number));
+        const sorted = unique.sort((a, b) => a.driver_number - b.driver_number);
+        
+        setDrivers(sorted);
+        if (setExternalDrivers) setExternalDrivers(sorted);
+
         setLoading(false);
 
         // Hay algo pendiente de cargar en la memoria y ese pendiente es un piloto? (Esto pasará cuando vengamos de un favorito)
@@ -269,7 +274,7 @@ export default function SessionSelector({ onStartSimulation }) {
             <button 
                 className="btn btn-danger flex-grow-1 fw-bold btn-sm py-2" 
                 onClick={handleStart} 
-                disabled={!selectedCircuit || loading} // CAMBIO AQUÍ: antes era !selectedDriver
+                disabled={!selectedCircuit || loading} 
             >
                 {loading ? '...' : 'START'}
             </button>
@@ -278,7 +283,7 @@ export default function SessionSelector({ onStartSimulation }) {
                 onClick={handleToggleFavorito} 
                 className="btn btn-sm btn-outline-danger"
                 style={{ minWidth: '40px' }} 
-                disabled={!selectedCircuit} // CAMBIO AQUÍ: antes era !selectedDriver
+                disabled={!selectedCircuit} 
             >
                 {esFavoritoActual ? "❤️" : "🤍"} 
             </button>
