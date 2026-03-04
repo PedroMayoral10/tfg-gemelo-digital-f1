@@ -1,6 +1,7 @@
 var express = require('express');
 var router = express.Router();
 const { connectToDB } = require('../db_mongo');
+const { getRaceSnapshot } = require('./race_data');
 
 const VELOCIDAD_REFRESCO = 200;
 const BLOQUE_SEGUNDOS = 15; // Aumentado ligeramente para dar aire a la DB con 54M de registros
@@ -14,6 +15,7 @@ let colaDatos = [];
 let session_key = null;
 let cursorTiempoAPI = null;
 let cursorTiempoSimulacion = null;
+let ultimoSnapshotCarrera = {};
 
 /* 
 ************************************************************* 
@@ -39,6 +41,14 @@ async function llenarBuffer() {
     try {
         
         const db = await connectToDB();
+
+        // Antes de llenar el buffer, obtenemos un snapshot actualizado de la carrera para tener la info de vuelta, stint, posición, etc. de cada piloto
+        const snapshotCarrera = await getRaceSnapshot(parseInt(session_key), start);
+        // Actualizamos la variable global para tener siempre el último estado conocido
+        ultimoSnapshotCarrera = snapshotCarrera;
+
+
+
         const nuevosDatos = await db.collection('location').find({
             session_key: parseInt(session_key),
             date: { $gte: start, $lt: end }
@@ -49,7 +59,15 @@ async function llenarBuffer() {
         .toArray(); 
 
         if (nuevosDatos.length > 0) {
-            colaDatos = [...colaDatos, ...nuevosDatos];
+
+            // Esto permite que al consumir el buffer, la tabla esté sincronizada con la posición.
+            const datosConTabla = nuevosDatos.map(dato => ({
+                ...dato,
+                race_table: snapshotCarrera
+            }));
+
+            colaDatos = [...colaDatos, ...datosConTabla];
+
             console.log(`✅ [DB] Buffer: ${colaDatos.length} items (Bloque de ${BLOQUE_SEGUNDOS}s)`);
             cursorTiempoAPI = end;
             timerLlenado = setTimeout(llenarBuffer, 1000);
@@ -77,6 +95,7 @@ function consumirBuffer() {
     cursorTiempoSimulacion = new Date(cursorTiempoSimulacion.getTime() + VELOCIDAD_REFRESCO);
 
     let datosPorPiloto = {};
+    let snapshotActual = null; // Variable temporal para capturar la tabla
     let indiceCorte = -1;
 
     for (let i = 0; i < colaDatos.length; i++) {
@@ -90,14 +109,19 @@ function consumirBuffer() {
                     y: colaDatos[i].y
                 };
             }
+            snapshotActual = colaDatos[i].race_table;
             indiceCorte = i;
         } else {
             break; 
         }
     }
 
-    if (Object.keys(datosPorPiloto).length > 0) {
-        ultimaRespuesta = { ...ultimaRespuesta, ...datosPorPiloto }; 
+    if (Object.keys(datosPorPiloto).length > 0 || snapshotActual) {
+        ultimaRespuesta = { 
+            ...ultimaRespuesta, // Mantenemos las posiciones anteriores para que no parpadeen los coches
+            ...datosPorPiloto,  // Sobrescribimos con las nuevas posiciones detectadas
+            race_table: snapshotActual || ultimoSnapshotCarrera // Actualizamos la tabla sincronizada
+        };
     }
 
     if (indiceCorte !== -1) { 
@@ -205,7 +229,10 @@ router.get("/current", (req, res) => {
     if (!session_key || Object.keys(ultimaRespuesta).length === 0) {
         return res.json({});
     }
-    res.json(ultimaRespuesta);
+    res.json({
+        ...ultimaRespuesta,
+        sim_time: cursorTiempoSimulacion // Añadimos el tiempo para poder revelar sectores en función de cuándo se inició la vuelta
+    });
 });
 
 module.exports = router;
