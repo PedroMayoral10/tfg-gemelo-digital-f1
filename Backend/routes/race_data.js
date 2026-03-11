@@ -88,7 +88,12 @@ async function getRaceSnapshot(session_key, currentTime) {
             }
         });
 
-        return snapshot;
+        return {
+            race_table: snapshot,        
+            sim_time: currentTime,       
+            session_key: session_key
+        };
+
     } catch (err) {
         console.error("❌ Error al obtener snapshot de carrera:", err.message);
         return {};

@@ -43,9 +43,9 @@ async function llenarBuffer() {
         const db = await connectToDB();
 
         // Antes de llenar el buffer, obtenemos un snapshot actualizado de la carrera para tener la info de vuelta, stint, posición, etc. de cada piloto
-        const snapshotCarrera = await getRaceSnapshot(parseInt(session_key), start);
+        const { race_table } = await getRaceSnapshot(parseInt(session_key), start);
         // Actualizamos la variable global para tener siempre el último estado conocido
-        ultimoSnapshotCarrera = snapshotCarrera;
+        ultimoSnapshotCarrera = race_table;
 
 
 
@@ -63,7 +63,7 @@ async function llenarBuffer() {
             // Esto permite que al consumir el buffer, la tabla esté sincronizada con la posición.
             const datosConTabla = nuevosDatos.map(dato => ({
                 ...dato,
-                race_table: snapshotCarrera
+                race_table: race_table
             }));
 
             colaDatos = [...colaDatos, ...datosConTabla];
@@ -231,7 +231,8 @@ router.get("/current", (req, res) => {
     }
     res.json({
         ...ultimaRespuesta,
-        sim_time: cursorTiempoSimulacion // Añadimos el tiempo para poder revelar sectores en función de cuándo se inició la vuelta
+        sim_time: cursorTiempoSimulacion,
+        session_key: session_key
     });
 });
 

@@ -11,6 +11,7 @@ var sessionsRouter = require('./routes/sessions'); // importar el enrutador de s
 var racesRouter = require('./routes/races'); // importar el enrutador de races del archivo races.js del directorio routes
 var authRouter = require('./routes/user'); // importar el enrutador de user del archivo user.js del directorio routes
 var interactiveFavsRouter = require('./routes/interactive_favs'); // importar el enrutador de interactive_favs del archivo interactive_favs.js del directorio routes
+var sessionsResultsRouter = require('./routes/sessions_results'); // importar el enrutador de sessions_results del archivo sessions_results.js del directorio routes
 
 var app = express(); 
 
@@ -27,6 +28,7 @@ app.use('/sessions', sessionsRouter); // Usar el enrutador de sessions para las 
 app.use('/races', racesRouter); // Usar el enrutador de races para las rutas que comienzan con /races
 app.use('/user', authRouter); // Usar el enrutador de user para las rutas que comienzan con /user
 app.use('/interactive_favs', interactiveFavsRouter); // Usar el enrutador de interactive_favs para las rutas que comienzan con /interactive_favs
+app.use('/sessions_results', sessionsResultsRouter); // Usar el enrutador de sessions_results para las rutas que comienzan con /sessions_results
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

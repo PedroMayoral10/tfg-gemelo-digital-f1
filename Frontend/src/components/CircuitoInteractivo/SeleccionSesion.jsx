@@ -115,14 +115,29 @@ export default function SessionSelector({ onStartSimulation,setExternalDrivers }
   // Iniciar simulación (coche y mapa del circuito) con la configuración seleccionada
   const handleStart = () => {
     if (!selectedCircuit) { toast.warning("Faltan datos"); return; }
+    const currentSessionData = sessions.find(s => String(s.session_key) === String(selectedCircuit));
     fetch(`${URL_API_BACKEND}/location/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_key: selectedCircuit })
-    }).then(res => res.json()).then(d => {
-        if (!d.error) { toast.success(`Simulación iniciada`); if (onStartSimulation) onStartSimulation(selectedDriver); }
+    })
+    .then(res => res.json())
+    .then(d => {
+        if (!d.error) { 
+            toast.success(`Simulación iniciada`); 
+            if (onStartSimulation) {
+                onStartSimulation(selectedDriver, {
+                    countryName: currentSessionData?.country_name,
+                    countryCode: currentSessionData?.country_code
+                });
+            } 
+        }
         else toast.error(d.error);
-    }).catch(e => toast.error("Error conexión"));
+    })
+    .catch(e => {
+        console.error(e);
+        toast.error("Error conexión");
+    });
   };
 
 

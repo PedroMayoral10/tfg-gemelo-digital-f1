@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import CircuitoInteractivo from './components/CircuitoInteractivo/CircuitoInteractivo';
 import Login from './components/InicioSesion/Login';
 import Register from './components/InicioSesion/Register';
+import "/node_modules/flag-icons/css/flag-icons.min.css";
 
 function App() {
 
@@ -35,7 +36,7 @@ function App() {
   }, [location]);
 
   return (
-    <div className="d-flex flex-column vh-100" style={{ backgroundColor: '#121212', overflow: 'hidden' }}>
+    <div className="d-flex flex-column" style={{ backgroundColor: '#121212', minHeight: '100vh' }}>
       
       <ToastContainer position="top-right" theme="dark" />
       
@@ -44,7 +45,7 @@ function App() {
         <Navbar />
       )}
 
-      <div className="flex-grow-1 w-100 d-flex flex-column">  
+      <div className="w-100 d-flex flex-column">  
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/register" element={<Register />} />
