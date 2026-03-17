@@ -10,20 +10,35 @@ export default function Circuito({ active, trigger, followedDriver, drivers, set
   const [allPositions, setAllPositions] = useState({}); 
   const [bounds, setBounds] = useState({ minX: 0, maxX: 0, minY: 0, maxY: 0 });
   const [loadingMap, setLoadingMap] = useState(false);
-
-  // Memoria para evitar que los coches desaparezcan si la API deja de enviarlos tras el DNF
-  const lastKnownPositions = useRef({});
-
   const svgSize = 800;
   const padding = 50;
+  const lastKnownPositions = useRef({}); // Memoria para evitar que los coches desaparezcan si la API deja de enviarlos
+  const activeDriversRef = useRef([]); // Mantener los pilotos de la carrera actual "congelados"
 
   const driverColours = useMemo(() => {
     const map = {};
-    drivers.forEach(d => {
+    activeDriversRef.current.forEach(d => {
       map[d.driver_number] = d.team_colour ? `#${d.team_colour}` : "#ffffff";
     });
     return map;
-  }, [drivers]);
+  }, [activeDriversRef.current, drivers]);
+
+  // Efecto para limpiar datos al pulsar START y congelar pilotos evitando que al cambiar de año sin dar a START desaparezcan
+  useEffect(() => {
+    lastKnownPositions.current = {};
+    setAllPositions({});
+    
+    if (active && drivers && drivers.length > 0) {
+        activeDriversRef.current = drivers;
+    }
+  }, [trigger]); 
+
+  // Actualizar pilotos activos si la lista llega después del trigger 
+  useEffect(() => {
+    if (active && drivers && drivers.length > 0 && activeDriversRef.current.length === 0) {
+        activeDriversRef.current = drivers;
+    }
+  }, [drivers, active]);
 
   // Carga del trazado estático
   useEffect(() => {
@@ -155,17 +170,18 @@ export default function Circuito({ active, trigger, followedDriver, drivers, set
               if (followedDriver && followedDriver !== driverNum) return null;
               if (isNaN(driverNum)) return null; // Ignora race_table y sim_time
 
-              const isKnownDriver = drivers.some(d => String(d.driver_number) === String(driverNum));
+              const isKnownDriver = activeDriversRef.current.some(d => String(d.driver_number) === String(driverNum));
               if (!isKnownDriver) return null;
 
               const status = driverStatus.find(s => String(s.driver_number) === String(driverNum));
-              const maxLaps = status ? parseInt(status.number_of_laps) : 999;
+              const lapsCompletedInDB = status ? parseInt(status.number_of_laps) : 999;
 
-              // LOGICA: DSQ y DNS desaparecen ya. DNF espera a que el líder pase a la vuelta siguiente.
+              // LOGICA: DNS desaparecen ya. DNF y DSQ espera a que el líder pase a la vuelta siguiente.
               let shouldHide = false;
               if (status) {
-                if (status.dns || status.dsq) shouldHide = true;
-                if (status.dnf && maxLaps >= 0 && leaderLap > maxLaps) shouldHide = true;
+                if (status.dns) shouldHide = true;
+                if (status.dsq && lapsCompletedInDB >= 0 && leaderLap > lapsCompletedInDB) shouldHide = true;
+                if (status.dnf && lapsCompletedInDB >= 0 && leaderLap > lapsCompletedInDB) shouldHide = true;
               }
 
               if (shouldHide) return null;
