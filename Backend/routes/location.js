@@ -1,6 +1,6 @@
 var express = require('express');
 var router = express.Router();
-const { connectToDB } = require('../db_mongo');
+const { connectToDB_OpenF1 } = require('../db_mongo');
 const { getRaceSnapshot } = require('./race_data');
 
 const VELOCIDAD_REFRESCO = 200;
@@ -40,7 +40,7 @@ async function llenarBuffer() {
 
     try {
         
-        const db = await connectToDB();
+        const db = await connectToDB_OpenF1();
 
         // Antes de llenar el buffer, obtenemos un snapshot actualizado de la carrera para tener la info de vuelta, stint, posición, etc. de cada piloto
         const { race_table } = await getRaceSnapshot(parseInt(session_key), start);
@@ -150,7 +150,7 @@ router.post('/start', async (req, res) => {
 
     try {
         detenerSimulacion();
-        const db = await connectToDB();
+        const db = await connectToDB_OpenF1();
         
         console.log(`🔎 Buscando sesión ${nuevaSession} en MongoDB (54M registros)...`);
         const infoSesion = await db.collection('sessions').findOne({ session_key: parseInt(nuevaSession) });
@@ -191,7 +191,7 @@ router.get('/track-data', async (req, res) => {
     if (circuitoCache) return res.json(circuitoCache);
 
     try {
-        const db = await connectToDB();
+        const db = await connectToDB_OpenF1();
         let driverNum = req.query.driver_number;
 
         if (!driverNum) {

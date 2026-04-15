@@ -1,13 +1,13 @@
 var express = require('express');
 var router = express.Router();
-const { connectToDB } = require('../db_mongo');
+const { connectToDB_OpenF1, connectToDB_F1Historical } = require('../db_mongo');
 
 
 // Carreras de la base de datos histórica
 
 router.get('/', async function(req, res) {
     try {
-        const db = await connectToDB();
+        const db = await connectToDB_F1Historical();
         const races = await db.collection('races').find().toArray();
         res.json(races);
     } catch (error) {
@@ -20,7 +20,7 @@ router.get('/', async function(req, res) {
 
 router.get('/year/:year', async function(req, res) {
     try {
-        const db = await connectToDB();
+        const db = await connectToDB_F1Historical();
         const year = parseInt(req.params.year);
         const races = await db.collection('races').find({ year: year }).toArray();
         res.json(races);
@@ -41,7 +41,7 @@ router.get('/openf1/year/:year', async function(req, res) {
     }
 
     try {
-        const db = await connectToDB();
+        const db = await connectToDB_OpenF1();
         // Pedimos a nuestra DB local solo las carreras (session_name=Race) de ese año
         const data = await db.collection('sessions').find({ 
             year: year, 

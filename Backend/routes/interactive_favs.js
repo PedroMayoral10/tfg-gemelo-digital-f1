@@ -1,6 +1,6 @@
 var express = require('express');
 var router = express.Router();
-const { connectToDB } = require('../db_mongo');
+const { connectToDB_OpenF1 } = require('../db_mongo');
 const { ObjectId } = require('mongodb');
 const { verifyToken } = require('../auth'); 
 
@@ -8,7 +8,7 @@ const { verifyToken } = require('../auth');
 router.post('/add', verifyToken, async function(req, res) {
 
     try {
-        const db = await connectToDB();
+        const db = await connectToDB_OpenF1();
         const { year, round, driverId, circuitName } = req.body;
 
         if (!year || !round || !driverId) {
@@ -53,7 +53,7 @@ router.post('/add', verifyToken, async function(req, res) {
 router.get('/list', verifyToken, async function(req, res) {
     
     try {
-        const db = await connectToDB();
+        const db = await connectToDB_OpenF1();
 
         // Buscamos TODOS los documentos en 'interactive_favourites' que tengan el userId del usuario actual
         const list = await db.collection('interactive_favourites')
@@ -73,7 +73,7 @@ router.get('/list', verifyToken, async function(req, res) {
 router.delete('/remove/:id', verifyToken, async function(req, res) {
 
     try {
-        const db = await connectToDB();
+        const db = await connectToDB_OpenF1();
         
         const result = await db.collection('interactive_favourites').deleteOne({
             _id: new ObjectId(req.params.id),

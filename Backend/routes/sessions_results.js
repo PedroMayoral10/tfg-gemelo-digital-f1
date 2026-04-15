@@ -1,12 +1,12 @@
 var express = require('express');
 var router = express.Router();
-const { connectToDB } = require('../db_mongo');
+const { connectToDB_OpenF1 } = require('../db_mongo');
 
 router.get('/openf1/total_laps/:session_key', async function(req, res) {
     const session_key = req.params.session_key;
 
     try {
-        const db = await connectToDB();
+        const db = await connectToDB_OpenF1();
         const data = await db.collection('session_result').findOne({ session_key: parseInt(session_key) });
         
         if (data && data.number_of_laps) {
@@ -27,7 +27,7 @@ router.get('/openf1/results/:session_key', async function(req, res) {
     const session_key = req.params.session_key;
 
     try {
-        const db = await connectToDB();
+        const db = await connectToDB_OpenF1();
         const results = await db.collection('session_result').find({ session_key: parseInt(session_key) })
         .project({ 
             driver_number: 1,

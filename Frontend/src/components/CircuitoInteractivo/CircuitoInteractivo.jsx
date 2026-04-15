@@ -65,7 +65,8 @@ export default function CircuitoInteractivo() {
 
   return (
     <>
-      <div className="sticky-top bg-black py-2 shadow-lg w-100 border-bottom border-danger" style={{ top: 0, zIndex: 1050, borderBottomWidth: '2px !important' }}>
+      {/* HEADER: bg-zinc-950 para que se fusione con el fondo de la App */}
+      <div className="sticky-top bg-zinc-900 py-2 w-100 border-bottom border-danger shadow-none" style={{ top: 0, zIndex: 1050, borderBottomWidth: '2px' }}>
         <div className="px-4"> 
           <div className="d-flex justify-content-between align-items-center">
             <div className="d-flex align-items-baseline gap-2">
@@ -94,9 +95,10 @@ export default function CircuitoInteractivo() {
         </div>
       </div>
 
-      <div className="p-4 w-100" style={{ minHeight: '100vh', display: 'block' }}>
+      {/* CUERPO: CORREGIDO className para aplicar el fondo Zinc */}
+      <div className="p-4 w-100 bg-zinc-900" style={{ minHeight: '100vh', display: 'block' }}>
         <div className="w-100" style={{ maxWidth: '1600px', margin: '0 auto' }}>
-          <div className="container-fluid py-3">
+          <div className="container-fluid py-3 bg-transparent">
             <div className="row">
               <div className="col-lg-9">
                 <div className="h-100" style={{ minHeight: '700px', width: '100%' }}>
@@ -112,7 +114,8 @@ export default function CircuitoInteractivo() {
               </div>
 
               <div className="col-lg-3">
-                <div className="h-100 bg-black border-danger" style={{ borderWidth: '2px', borderRadius: '15px' }}>
+                {/* PANEL CONFIGURACIÓN: bg-black puro */}
+                <div className="h-100 bg-black border border-danger shadow-none" style={{ borderWidth: '2px', borderRadius: '15px' }}>
                   <div className="card-body p-4 d-flex flex-column">
                     <h6 className="text-white mb-3 fw-bold text-uppercase ">
                       Configuración de carrera
@@ -133,7 +136,8 @@ export default function CircuitoInteractivo() {
                     Race control
                   </h5>
                 </div>
-                <div className="border-danger bg-black border border-secondary p-3 shadow-sm" style={{ borderRadius: '15px' }}>
+                {/* RACE CONTROL: bg-black puro y sombra eliminada */}
+                <div className="bg-black border border-danger p-3 shadow-none" style={{ borderRadius: '15px' }}>
                   <TablaRaceControl 
                     session_key={raceData?.session_key} 
                     sim_time={raceData?.sim_time} 
@@ -142,34 +146,32 @@ export default function CircuitoInteractivo() {
               </div>
             </div>
 
-            <div className="row mt-4">
+            <div className="row mt-4 pb-5">
               <div className="col-12">
                  <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap">
                     <h5 className="text-white mb-0 text-uppercase fw-bold" style={{ fontSize: '1.1rem', letterSpacing: '1px' }}>
                       Clasificación y Tiempos
                     </h5>
-                    <div className="d-flex align-items-center gap-2">
+                    <div className="d-flex align-items-center gap-3">
                       <div className="d-flex align-items-center">
-                        <span style={{ width: '10px', height: '10px', backgroundColor: '#a855f7', borderRadius: '100%', marginRight: '6px'}}></span>
-                        <small className="text-white">Récord Sector</small>
+                        <span style={{ width: '10px', height: '10px', backgroundColor: '#a855f7', borderRadius: '100%', marginRight: '8px'}}></span>
+                        <small className="text-zinc-400 uppercase font-bold text-[10px]">Récord Sector</small>
                       </div>
-                      
                       <div className="d-flex align-items-center">
-                        <span style={{ width: '10px', height: '10px', backgroundColor: '#4ade80', borderRadius: '100%', marginRight: '6px'}}></span>
-                        <small className="text-white">Mejora Personal</small>
+                        <span style={{ width: '10px', height: '10px', backgroundColor: '#4ade80', borderRadius: '100%', marginRight: '8px'}}></span>
+                        <small className="text-zinc-400 uppercase font-bold text-[10px]">Mejora Personal</small>
                       </div>
-
                       <div className="d-flex align-items-center">
-                        <span style={{ width: '10px', height: '10px', backgroundColor: '#facc15', borderRadius: '100%', marginRight: '6px'}}></span>
-                        <small className="text-white">Sin Mejora</small>
+                        <span style={{ width: '10px', height: '10px', backgroundColor: '#facc15', borderRadius: '100%', marginRight: '8px'}}></span>
+                        <small className="text-zinc-400 uppercase font-bold text-[10px]">Sin Mejora</small>
                       </div>
                     </div>
                   </div>
-                 <TablaCarrera
-                   key={refreshTrigger} 
-                   raceData={raceData} 
-                   driverStatus={driverStatus} 
-                 />
+                  <TablaCarrera
+                    key={refreshTrigger} 
+                    raceData={raceData} 
+                    driverStatus={driverStatus} 
+                  />
               </div>
             </div>
           </div>

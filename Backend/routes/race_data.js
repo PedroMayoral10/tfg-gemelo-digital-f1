@@ -1,4 +1,4 @@
-const { connectToDB } = require('../db_mongo');
+const { connectToDB_OpenF1 } = require('../db_mongo');
 
 /*
  ************************************************************* 
@@ -7,7 +7,7 @@ const { connectToDB } = require('../db_mongo');
 */
 async function getRaceSnapshot(session_key, currentTime) {
     try {
-        const db = await connectToDB();
+        const db = await connectToDB_OpenF1();
         const [laps, intervals, positions, stints, drivers] = await Promise.all([
             // Última vuelta de cada piloto 
             db.collection('laps').aggregate([

@@ -34,7 +34,7 @@ export default function Navbar() {
   }, []);
 
   return (
-    <div className="p-3 shadow-sm border-bottom border-secondary bg-dark">
+    <div className="p-3 shadow-sm border-bottom border-secondary bg-dark" style={{ height: '70px' }}>
       <div className="d-flex justify-content-between align-items-center">
         
         <h1 
@@ -65,11 +65,11 @@ export default function Navbar() {
               </Link>
             </NavigationMenuItem>
 
-            {/* BOTÓN 3: TELEMETRÍA */}
+            {/* BOTÓN 3: ESCUDERÍAS */}
             <NavigationMenuItem>
-              <Link to="/telemetria">
+              <Link to="/escuderias">
                 <NavigationMenuLink className={`${navigationMenuTriggerStyle()} bg-transparent text-white hover:bg-white hover:text-black`}>
-                  Telemetría
+                  Escuderías
                 </NavigationMenuLink>
               </Link>
             </NavigationMenuItem>

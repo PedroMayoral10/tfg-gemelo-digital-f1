@@ -1,6 +1,6 @@
 var express = require('express');
 var router = express.Router();
-const { connectToDB } = require('../db_mongo');
+const { connectToDB_OpenF1 } = require('../db_mongo');
 
 // Obtener incidentes de Race Control por session_key desde MongoDB
 router.get('/openf1/race_control/:session_key', async function(req, res) {
@@ -9,7 +9,7 @@ router.get('/openf1/race_control/:session_key', async function(req, res) {
     const { sim_time, last_date } = req.query; 
 
     try {
-        const db = await connectToDB();
+        const db = await connectToDB_OpenF1();
         
         // Filtro base: sesión y tiempo actual de simulación
         let query = { 

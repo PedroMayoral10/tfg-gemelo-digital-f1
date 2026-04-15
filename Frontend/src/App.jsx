@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import CircuitoInteractivo from './components/CircuitoInteractivo/CircuitoInteractivo';
 import Login from './components/InicioSesion/Login';
 import Register from './components/InicioSesion/Register';
+import Pilotos from './components/Pilotos/Pilotos';
 import "/node_modules/flag-icons/css/flag-icons.min.css";
 
 function App() {
@@ -36,7 +37,7 @@ function App() {
   }, [location]);
 
   return (
-    <div className="d-flex flex-column" style={{ backgroundColor: '#121212', minHeight: '100vh' }}>
+    <div className="d-flex flex-column" bg-zinc-950 style={{ height: '100vh' }}>
       
       <ToastContainer position="top-right" theme="dark" />
       
@@ -50,8 +51,8 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/circuito-interactivo" element={<CircuitoInteractivo />} />
-          <Route path="/pilotos" element={<div className="p-5 text-center text-white">Pilotos</div>} />
-          <Route path="/telemetria" element={<div className="p-5 text-center text-white">Telemetria</div>} />
+          <Route path="/pilotos" element={<Pilotos />} />
+          <Route path="/escuderias" element={<div className="p-5 text-center text-white">Escuderías</div>} />
         </Routes>
       </div>
     </div>

@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 
-const { connectToDB } = require('../db_mongo'); 
+const { connectToDB_OpenF1 } = require('../db_mongo'); 
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
@@ -10,7 +10,7 @@ const bcrypt = require('bcryptjs');
 router.post('/register', async function(req, res) {
     try {
 
-        const db = await connectToDB();
+        const db = await connectToDB_OpenF1();
         const { username, password } = req.body;
 
         if (!username || !password) {
@@ -43,7 +43,7 @@ router.post('/register', async function(req, res) {
 router.post('/login', async function(req, res) {
     try {
         
-        const db = await connectToDB();
+        const db = await connectToDB_OpenF1();
         const { username, password } = req.body;
 
         if (!username || !password) {
