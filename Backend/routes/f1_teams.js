@@ -3,7 +3,7 @@ var router = express.Router();
 const { connectToDB_F1Historical } = require('../db_mongo');
 
 // Lista de escuderías históricas
-router.get('/lista', async function(res) {
+router.get('/lista', async function(req, res) {
     try {
         const db = await connectToDB_F1Historical();
         const constructors = await db.collection('constructors')

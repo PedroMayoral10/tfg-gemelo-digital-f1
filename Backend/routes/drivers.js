@@ -4,7 +4,7 @@ const { connectToDB_OpenF1, connectToDB_F1Historical } = require('../db_mongo');
 
 // Pilotos de la base de datos histórica
 
-router.get('/pilotos_historicos', async function(res) {
+router.get('/pilotos_historicos', async function(req, res) {
     try {
         const db = await connectToDB_F1Historical(); 
         const drivers = await db.collection('drivers').find().sort({ full_name: 1 }).toArray(); 

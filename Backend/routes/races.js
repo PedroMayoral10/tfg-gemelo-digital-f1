@@ -5,7 +5,7 @@ const { connectToDB_OpenF1, connectToDB_F1Historical } = require('../db_mongo');
 
 // Carreras de la base de datos histórica
 
-router.get('/', async function(res) {
+router.get('/', async function(req, res) {
     try {
         const db = await connectToDB_F1Historical();
         const races = await db.collection('races').find().toArray();
