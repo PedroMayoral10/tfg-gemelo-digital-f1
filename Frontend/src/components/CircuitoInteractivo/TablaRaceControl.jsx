@@ -19,7 +19,38 @@ const flagColorMapper = {
 export default function TablaRaceControl({ session_key, sim_time }) {
     const [raceMessages, setRaceMessages] = useState([]);
     const lastSessionKeyRef = useRef(null);
+    const simTimeRef = useRef(sim_time);
+    const raceMessagesRef = useRef([]);
     const scrollRef = useRef(null);
+
+    const fetchMessages = async () => {
+        if (!simTimeRef.current || !lastSessionKeyRef.current) return;
+
+        const simTimeActual = new Date(simTimeRef.current);
+        const mensajes = raceMessagesRef.current;
+        const ultimoMsgDate = mensajes.length > 0
+            ? new Date(mensajes[mensajes.length - 1].date)
+            : null;
+
+        // Lógica de salto atrás
+        if (ultimoMsgDate && simTimeActual < ultimoMsgDate) {
+            setRaceMessages([]);
+            return;
+        }
+
+        try {
+            const lastDateParam = ultimoMsgDate ? ultimoMsgDate.toISOString() : "null";
+            const res = await fetch(
+                `${URL_API_BACKEND}/race_control/openf1/race_control/${lastSessionKeyRef.current}?sim_time=${simTimeRef.current}&last_date=${lastDateParam}`
+            );
+            const nuevos = await res.json();
+            if (nuevos && nuevos.length > 0) {
+                setRaceMessages(prev => [...prev, ...nuevos]);
+            }
+        } catch (err) {
+            console.error("Error sincronizando Race Control:", err);
+        }
+    };
 
     // Auto-scroll al recibir mensajes
     useEffect(() => {
@@ -28,46 +59,49 @@ export default function TablaRaceControl({ session_key, sim_time }) {
         }
     }, [raceMessages]);
 
-    // Sincronización con el Backend
+    // Mantiene los refs sincronizados con el estado
     useEffect(() => {
-        // Limpiar si cambia la sesión
+        simTimeRef.current = sim_time;
+    }, [sim_time]);
+
+    useEffect(() => {
+        raceMessagesRef.current = raceMessages;
+    }, [raceMessages]);
+
+    // Limpiar si cambia la sesión
+    useEffect(() => {
         if (session_key && session_key !== lastSessionKeyRef.current) {
             setRaceMessages([]);
             lastSessionKeyRef.current = session_key;
-            return;
         }
+    }, [session_key]);
 
-        if (sim_time && session_key) {
-            const simTimeActual = new Date(sim_time);
-            const ultimoMsgDate = raceMessages.length > 0
-                ? new Date(raceMessages[raceMessages.length - 1].date)
-                : null;
+    useEffect(() => {
+        if (!sim_time) return;
+        const simTimeActual = new Date(sim_time);
+        const mensajes = raceMessagesRef.current;
+        const ultimoMsgDate = mensajes.length > 0
+            ? new Date(mensajes[mensajes.length - 1].date)
+            : null;
 
-            // Lógica de salto atrás
-            if (ultimoMsgDate && simTimeActual < ultimoMsgDate) {
-                setRaceMessages([]);
-                return;
-            }
-
-            const fetchMessages = async () => {
-                try {
-                    const lastDateParam = ultimoMsgDate ? ultimoMsgDate.toISOString() : "null";
-                    const res = await fetch(
-                        `${URL_API_BACKEND}/race_control/openf1/race_control/${session_key}?sim_time=${sim_time}&last_date=${lastDateParam}`
-                    );
-                    const nuevos = await res.json();
-
-                    if (nuevos && nuevos.length > 0) {
-                        setRaceMessages(prev => [...prev, ...nuevos]);
-                    }
-                } catch (err) {
-                    console.error("Error sincronizando Race Control:", err);
-                }
-            };
-
+        if (ultimoMsgDate && simTimeActual < ultimoMsgDate) {
+            setRaceMessages([]);
+            raceMessagesRef.current = []; // Limpiamos también el ref para que fetchMessages arranque desde cero
             fetchMessages();
         }
-    }, [sim_time, session_key]);
+    }, [sim_time]);
+
+    // Fetch inmediato cuando cambia la sesión o el sim_time salta atrás
+    useEffect(() => {
+        if (session_key) fetchMessages();
+    }, [session_key]);
+
+    // Fetch cada 5 segundos
+    useEffect(() => {
+        if (!session_key) return;
+        const interval = setInterval(fetchMessages, 5000);
+        return () => clearInterval(interval);
+    }, [session_key]);
 
     return (
         <div
@@ -116,7 +150,7 @@ export default function TablaRaceControl({ session_key, sim_time }) {
                                                 msg.flag === "DOUBLE YELLOW"
                                                     ? `linear-gradient(135deg, ${flagColorMapper["DOUBLE YELLOW LIGHT"]} 50%, ${flagColorMapper["DOUBLE YELLOW DARK"]} 50%)`
                                                     : msg.flag === "BLACK AND WHITE"
-                                                        ? `linear-gradient(135deg, #ffffff 50%, #000000 50%)`
+                                                        ? `linear-gradient(135deg, ${flagColorMapper["B&W_WHITE"]} 50%, ${flagColorMapper["B&W_BLACK"]} 50%)`
                                                         : flagColor,
                                             borderRadius: '2px',
                                             flexShrink: 0,

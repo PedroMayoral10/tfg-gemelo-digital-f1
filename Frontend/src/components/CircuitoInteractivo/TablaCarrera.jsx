@@ -12,13 +12,12 @@ export default function TablaCarrera({ raceData, driverStatus = [] }) {
   const [records, setRecords] = useState({
     session: { s1: 999, s2: 999, s3: 999 },
     personal: {},
-    lastGaps: {}
   });
 
   const [displayedLaps, setDisplayedLaps] = useState({});
 
   const actualData = useMemo(() => {
-    return raceData?.race_table || raceData?.snapshot || {};
+    return raceData?.race_table || {};
   }, [raceData]);
 
   // COLORES DE NEUMÁTICOS
@@ -222,7 +221,7 @@ export default function TablaCarrera({ raceData, driverStatus = [] }) {
                     className={`bg-black text-white border-zinc-800 transition-colors h-11 ${driver.isOut ? "opacity-40 grayscale-[0.8]" : "hover:bg-zinc-900"
                       }`}
                   >
-                    <TableCell className={`text-center font-bold text-xl italic p-0 ${driver.isOut ? "text-red-600" : ""}`}>
+                    <TableCell className={`text-center font-bold text-xl p-0 ${driver.isOut ? "text-red-600" : ""}`}>
                       {driver.displayPos}
                     </TableCell>
 

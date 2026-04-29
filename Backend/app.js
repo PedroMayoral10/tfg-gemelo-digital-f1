@@ -14,6 +14,7 @@ var interactiveFavsRouter = require('./routes/interactive_favs'); // importar el
 var sessionsResultsRouter = require('./routes/sessions_results'); // importar el enrutador de sessions_results del archivo sessions_results.js del directorio routes
 var raceControlRouter = require('./routes/race_control'); // importar el enrutador de race_control del archivo race_control.js del directorio routes
 var f1TeamsRouter = require('./routes/f1_teams'); // importar el enrutador de constructors del archivo constructors.js del directorio routes
+var raceDataRouter = require('./routes/race_data'); // importar el enrutador de race_data del archivo race_data.js del directorio routes
 
 var app = express(); 
 
@@ -33,7 +34,7 @@ app.use('/interactive_favs', interactiveFavsRouter); // Usar el enrutador de int
 app.use('/sessions_results', sessionsResultsRouter); // Usar el enrutador de sessions_results para las rutas que comienzan con /sessions_results
 app.use('/race_control', raceControlRouter); // Usar el enrutador de race_control para las rutas que comienzan con /race_control
 app.use('/f1_teams', f1TeamsRouter); // Usar el enrutador de f1_teams para las rutas que comienzan con /f1_teams
-
+app.use('/race_data', raceDataRouter); // Usar el enrutador de race_data para las rutas que comienzan con /race_data  
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
   next(createError(404));

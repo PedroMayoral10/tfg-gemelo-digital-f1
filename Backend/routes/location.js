@@ -1,7 +1,6 @@
 var express = require('express');
 var router = express.Router();
 const { connectToDB_OpenF1 } = require('../db_mongo');
-const { getRaceSnapshot } = require('./race_data');
 
 const VELOCIDAD_REFRESCO = 200;
 const BLOQUE_SEGUNDOS = 15; 
@@ -15,7 +14,14 @@ let colaDatos = [];
 let session_key = null;
 let cursorTiempoAPI = null;
 let cursorTiempoSimulacion = null;
-let ultimoSnapshotCarrera = {};
+
+let session_start_time = null;
+let session_end_time = null;
+
+// Getter para que otros módulos puedan acceder al estado de la simulación
+function getTiempoSimulacion() {
+    return { cursorTiempoSimulacion, session_key };
+}
 
 /* 
 ************************************************************* 
@@ -42,13 +48,6 @@ async function llenarBuffer() {
         
         const db = await connectToDB_OpenF1();
 
-        // Antes de llenar el buffer, obtenemos un snapshot actualizado de la carrera para tener la info de vuelta, stint, posición, etc. de cada piloto
-        const { race_table } = await getRaceSnapshot(parseInt(session_key), start);
-        // Actualizamos la variable global para tener siempre el último estado conocido
-        ultimoSnapshotCarrera = race_table;
-
-
-
         const nuevosDatos = await db.collection('location').find({
             session_key: parseInt(session_key),
             date: { $gte: start, $lt: end }
@@ -58,22 +57,13 @@ async function llenarBuffer() {
         .sort({ date: 1 }) 
         .toArray(); 
 
+        cursorTiempoAPI = end;
+
         if (nuevosDatos.length > 0) {
-
-            // Esto permite que al consumir el buffer, la tabla esté sincronizada con la posición.
-            const datosConTabla = nuevosDatos.map(dato => ({
-                ...dato,
-                race_table: race_table
-            }));
-
-            colaDatos = [...colaDatos, ...datosConTabla];
-
-            console.log(`✅ [DB] Buffer: ${colaDatos.length} items (Bloque de ${BLOQUE_SEGUNDOS}s)`);
-            cursorTiempoAPI = end;
+            colaDatos = [...colaDatos, ...nuevosDatos];
             timerLlenado = setTimeout(llenarBuffer, 1000);
         } else {
             console.log(`⚠️ [DB] Hueco de datos o fin de sesión. Saltando...`);
-            cursorTiempoAPI = end;
             timerLlenado = setTimeout(llenarBuffer, 100);
         }
 
@@ -95,7 +85,6 @@ function consumirBuffer() {
     cursorTiempoSimulacion = new Date(cursorTiempoSimulacion.getTime() + VELOCIDAD_REFRESCO);
 
     let datosPorPiloto = {};
-    let snapshotActual = null; // Variable temporal para capturar la tabla
     let indiceCorte = -1;
 
     for (let i = 0; i < colaDatos.length; i++) {
@@ -109,18 +98,16 @@ function consumirBuffer() {
                     y: colaDatos[i].y
                 };
             }
-            snapshotActual = colaDatos[i].race_table;
             indiceCorte = i;
         } else {
             break; 
         }
     }
 
-    if (Object.keys(datosPorPiloto).length > 0 || snapshotActual) {
+    if (Object.keys(datosPorPiloto).length > 0) {
         ultimaRespuesta = { 
             ...ultimaRespuesta, // Mantenemos las posiciones anteriores para que no parpadeen los coches
             ...datosPorPiloto,  // Sobrescribimos con las nuevas posiciones detectadas
-            race_table: snapshotActual || ultimoSnapshotCarrera // Actualizamos la tabla sincronizada
         };
     }
 
@@ -146,32 +133,42 @@ function detenerSimulacion() {
 
 router.post('/start', async (req, res) => {
     const { session_key: nuevaSession } = req.body;
-    if (!nuevaSession) return res.status(400).json({ error: "Faltan datos" });
 
     try {
         detenerSimulacion();
         const db = await connectToDB_OpenF1();
-        
-        console.log(`🔎 Buscando sesión ${nuevaSession} en MongoDB (54M registros)...`);
-        const infoSesion = await db.collection('sessions').findOne({ session_key: parseInt(nuevaSession) });
 
-        if (!infoSesion) {
-            return res.status(404).json({ error: "Sesión no encontrada" });
+        const infoSesion = await db.collection('sessions').findOne({ session_key: parseInt(nuevaSession) });
+        if (!infoSesion) return res.status(404).json({ error: "Sesión no encontrada" });
+        
+        const ultimoRegistro = await db.collection('location')
+            .find({ session_key: parseInt(nuevaSession) })
+            .hint({ session_key: 1, date: 1 }) 
+            .sort({ date: -1 }) 
+            .project({ date: 1, _id: 0 })
+            .limit(1)
+            .toArray();
+
+        if (ultimoRegistro.length === 0) {
+            return res.status(404).json({ error: "No hay telemetría para esta sesión" });
         }
 
-        const fechaInicio = new Date(infoSesion.date_start);
         session_key = nuevaSession;
-        cursorTiempoAPI = fechaInicio;
-        cursorTiempoSimulacion = fechaInicio;
+        session_start_time = new Date(infoSesion.date_start);
+        session_end_time = new Date(ultimoRegistro[0].date) 
+        cursorTiempoAPI = session_start_time;
+        cursorTiempoSimulacion = session_start_time;
 
-        console.log(`🟢 START DB: Sesión ${session_key} - ${infoSesion.location}`);
+        // Calculamos la duración para la barra del frontend para poder avanzar o retroceder en el tiempo de la carrera
+        const duracionRealSegundos = Math.floor((session_end_time - session_start_time) / 1000);
 
         llenarBuffer();
         timerConsumo = setInterval(consumirBuffer, VELOCIDAD_REFRESCO);
 
         res.json({
             msg: "Simulación iniciada",
-            startTime: infoSesion.date_start
+            totalDuration: duracionRealSegundos,
+            startTime: session_start_time
         });
 
     } catch (error) {
@@ -225,7 +222,7 @@ router.get('/track-data', async (req, res) => {
     }
 });
 
-router.get("/current", (req,res) => {
+router.get("/current", (req, res) => {
 
     // Elimina los 304 para que el cliente siempre reciba todo y no le devuelvan respuestas que no son actualizadas
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
@@ -236,8 +233,47 @@ router.get("/current", (req,res) => {
     res.json({
         ...ultimaRespuesta,
         sim_time: cursorTiempoSimulacion,
+        startTime: session_start_time,
         session_key: session_key
     });
 });
 
+router.post('/modify', async (req, res) => {
+    const { offsetSeconds } = req.body;
+    
+    if (!session_key || !session_start_time) {
+        return res.status(400).json({ error: "No hay simulación activa" });
+    }
+
+    try {
+
+        // Tiempo al que se quiere saltar
+        const nuevaFecha = new Date(session_start_time.getTime() + (offsetSeconds * 1000));
+
+        if (nuevaFecha > session_end_time) {
+            return res.status(400).json({ error: "El tiempo solicitado excede el final de la carrera" });
+        }
+
+        // Reiniciamos todo para que se empiece a simular desde el nuevo tiempo
+        if (timerLlenado) clearTimeout(timerLlenado);
+        
+        colaDatos = [];               
+        cursorTiempoAPI = nuevaFecha; 
+        cursorTiempoSimulacion = nuevaFecha; 
+        ultimaRespuesta = {};         
+
+        llenarBuffer();
+
+        res.json({ 
+            message: "Tiempo actualizado", 
+            currentSimTime: nuevaFecha 
+        });
+
+    } catch (error) {
+        console.error("Error en /modify:", error);
+        res.status(500).json({ error: "Error al modificar el tiempo" });
+    }
+});
+
 module.exports = router;
+module.exports.getTiempoSimulacion = getTiempoSimulacion;

@@ -1,4 +1,7 @@
+var express = require('express');
+var router = express.Router();
 const { connectToDB_OpenF1 } = require('../db_mongo');
+const { getTiempoSimulacion } = require('./location');
 
 /*
  ************************************************************* 
@@ -103,4 +106,22 @@ async function getRaceSnapshot(session_key, currentTime) {
     }
 }
 
-module.exports = { getRaceSnapshot };
+// Devuelve el snapshot de la carrera en el momento actual de la simulación
+ 
+router.get('/', async (req, res) => {
+    const { cursorTiempoSimulacion, session_key } = getTiempoSimulacion();
+ 
+    if (!session_key || !cursorTiempoSimulacion) {
+        return res.status(400).json({ error: "No hay simulación activa" });
+    }
+ 
+    try {
+        const snapshot = await getRaceSnapshot(parseInt(session_key), cursorTiempoSimulacion);
+        res.json(snapshot);
+    } catch (error) {
+        console.error("Error en /race-info:", error);
+        res.status(500).json({ error: "Error al obtener info de carrera" });
+    }
+});
+
+module.exports = router;

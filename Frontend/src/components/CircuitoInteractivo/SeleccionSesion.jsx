@@ -114,28 +114,17 @@ export default function SessionSelector({ onStartSimulation, setExternalDrivers 
     const handleStart = () => {
         if (!selectedCircuit) { toast.warning("Faltan datos"); return; }
         const currentSessionData = sessions.find(s => String(s.session_key) === String(selectedCircuit));
-        fetch(`${URL_API_BACKEND}/location/start`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_key: selectedCircuit })
-        })
-            .then(res => res.json())
-            .then(d => {
-                if (!d.error) {
-                    toast.success(`Simulación iniciada`);
-                    if (onStartSimulation) {
-                        onStartSimulation(selectedDriver, {
-                            countryName: currentSessionData?.country_name,
-                            countryCode: currentSessionData?.country_code
-                        });
-                    }
-                }
-                else toast.error(d.error);
-            })
-            .catch(e => {
-                console.error(e);
-                toast.error("Error conexión");
-            });
+
+        if (onStartSimulation) {
+            onStartSimulation(
+                selectedDriver,
+                {
+                    countryName: currentSessionData?.country_name,
+                    countryCode: currentSessionData?.country_code
+                },
+                selectedCircuit 
+            );
+        }
     };
 
     // Carga los favoritos del usuario
@@ -186,7 +175,7 @@ export default function SessionSelector({ onStartSimulation, setExternalDrivers 
 
                 setLoading(false);
 
-                // Hay algo pendiente de cargar en la memoria y ese pendiente es un piloto? (Esto pasará cuando vengamos de un favorito)
+                // Hay algo pendiente de cargar en la memoria y ese pendiente es un piloto (Esto pasará cuando vengamos de un favorito)
                 if (pendingLoad.current && pendingLoad.current.driver) {
                     setSelectedDriver(pendingLoad.current.driver);
                     pendingLoad.current = null;
@@ -207,15 +196,16 @@ export default function SessionSelector({ onStartSimulation, setExternalDrivers 
                 <h6 className="text-warning mb-2">⭐ Favoritos</h6>
                 <div className="list-group" style={{ height: '210px', overflowY: 'auto' }}>
                     {listaFavoritos.length === 0 ? (
-                        <div className="h-100 d-flex flex-column justify-content-center align-items-center text-muted small fst-italic bg-black bg-opacity-25">
-                            <span style={{ fontSize: '1.5rem' }}>📭</span> Lista vacía
+                        <div className="h-100 d-flex flex-column justify-content-center align-items-center small bg-black bg-opacity-25">
+                            <span style={{ fontSize: '2em' }}>📭</span> 
+                            <span className="text-white"> Lista vacía </span>
                         </div>
                     ) : (
                         listaFavoritos.map((fav, i) => (
                             <div key={i} className="list-group-item list-group-item-action bg-black text-white p-1 px-2 border-bottom border-secondary d-flex justify-content-between align-items-center">
                                 <div className="small flex-grow-1 text-truncate pe-2" style={{ fontSize: '0.85rem' }}>
                                     <span className="text-warning fw-bold">{fav.year}</span> | {fav.circuitName} <br />
-                                    <span className="text-white">🏁 {fav.driverId}</span>
+                                    <span className="text-white">Nº {fav.driverId }</span>
                                 </div>
                                 <div className="flex-shrink-0">
                                     <button
@@ -255,7 +245,7 @@ export default function SessionSelector({ onStartSimulation, setExternalDrivers 
                     className="form-select form-select-sm bg-dark text-white border-secondary"
                     value={selectedCircuit}
                     onChange={e => {
-                        pendingLoad.current = null; // Usuario toca manual -> anulamos automático
+                        pendingLoad.current = null; 
                         setSelectedCircuit(e.target.value);
                         setSelectedDriver("");
                     }}
