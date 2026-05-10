@@ -34,4 +34,4 @@ async function connectToDB_F1Historical() {
 }
 
 //Exportar la función para usarla en otros archivos
-module.exports = { connectToDB_OpenF1, connectToDB_F1Historical };
+module.exports = { connectToDB_OpenF1, connectToDB_F1Historical, client };

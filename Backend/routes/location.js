@@ -68,7 +68,9 @@ async function llenarBuffer() {
         }
 
     } catch (err) {
-        if (!session_key) return; // Si la sesión se detuvo mientras se hacía la consulta, no hacemos nada.
+       if (!session_key || err.message.includes('closed') || err.message.includes('ended')) {
+            return; 
+        }; 
         console.error("❌ Error Crítico DB:", err.message);
         timerLlenado = setTimeout(llenarBuffer, 3000);
     }
